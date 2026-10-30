@@ -1,24 +1,23 @@
-# intmc
+# intmc - Minecraft Server Hosting for Android
 
-A Rust-based Minecraft server hosting app for Android. Built with egui for the UI and designed to run natively on Android via the NDK.
+A low-resource, mobile-first Minecraft server hosting app for Android. Run Java Edition Minecraft servers directly on your phone or tablet with minimal overhead.
 
 ## Features
 
-- **Native Android App** - Runs directly on Android without containerization or virtualization
-- **Minecraft Server Management** - Start, stop, and manage Java Edition servers
-- **LAN Discovery** - Automatic local network server discovery
-- **playit.gg Integration** - Easy tunneling for external access
-- **Plugin Support** - Install and manage server plugins
-- **Modern UI** - Built with egui/eframe for a responsive, native feel
-- **SQLite Storage** - Persistent configuration and server data
+- **Multiple Server Backends**: PumpkinMC, SteelMC, Rosewater, Glowstone-rs support
+- **Playit.gg Tunnels**: Secure, zero-config tunneling for external access
+- **LAN Discovery**: Automatic local network server discovery and announcement
+- **Plugin Marketplace**: Browse, search, and install plugins for supported backends
+- **Mobile-First UI**: Built with egui/eframe for responsive touch-friendly interface
+- **SQLite Storage**: Persistent server configurations and metadata
+- **Low Resource Usage**: Optimized for mobile devices with 2GB+ RAM
 
-## Architecture
+## Requirements
 
-- **Frontend**: egui/eframe (immediate mode GUI)
-- **Backend**: Rust with tokio async runtime
-- **Android Bridge**: android-activity + ndk crates
-- **Storage**: SQLite via rusqlite
-- **Networking**: socket2 for LAN discovery
+- **Android API 24+** (Android 7.0 Nougat)
+- **2GB RAM** minimum (4GB+ recommended)
+- **ARM64** architecture (aarch64-linux-android)
+- **Storage**: 500MB+ for server files and world data
 
 ## Build Instructions
 
@@ -29,7 +28,7 @@ A Rust-based Minecraft server hosting app for Android. Built with egui for the U
 - Java 17+ (for running Minecraft servers)
 - Android SDK with build-tools
 
-### Setup Android Target
+### Setup Android Targets
 
 ```bash
 rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
@@ -62,6 +61,19 @@ cargo apk build --target aarch64-linux-android
 # Output: target/aarch64-linux-android/debug/apk/intmc-debug.apk
 ```
 
+## Usage Instructions
+
+1. **Install the APK** on your Android device (API 24+)
+2. **Grant storage permissions** when prompted
+3. **Create a server** from the main screen:
+   - Enter server name
+   - Select backend (PumpkinMC, SteelMC, Rosewater, Glowstone-rs)
+   - Set port (default: 25565)
+4. **Start the server** - it will download the backend if needed
+5. **Connect via LAN** - other devices on same network can join directly
+6. **Enable Playit.gg tunnel** for external access (creates a secure tunnel)
+7. **Install plugins** from the marketplace for supported backends
+
 ## Project Structure
 
 ```
@@ -69,31 +81,41 @@ intmc/
 ├── src/
 │   ├── main.rs          # Entry point
 │   ├── app/             # Main application logic
-│   ├── server/          # Server management
-│   ├── playit/          # playit.gg integration
-│   ├── lan/             # LAN discovery
-│   ├── plugins/         # Plugin management
-│   ├── storage/         # SQLite persistence
-│   └── ui/              # egui components
+│   ├── server/          # Server management & backends
+│   ├── playit/          # playit.gg tunnel integration
+│   ├── lan/             # LAN discovery & announcement
+│   ├── plugins/         # Plugin marketplace & management
+│   ├── storage/         # SQLite persistence layer
+│   └── ui/              # egui components & screens
 ├── jni/                 # JNI bindings for Android
 ├── Cargo.toml
-└── build.rs
+├── build.rs
+└── .gitignore
 ```
 
-## Configuration
+## Contributing Guidelines
 
-Server configurations are stored in SQLite database. Default location:
-- Desktop: `~/.config/intmc/`
-- Android: App-specific storage directory
+1. **Fork** the repository
+2. **Create a feature branch** (`git checkout -b feature/amazing-feature`)
+3. **Make your changes** with clear, focused commits
+4. **Run checks** before submitting:
+   ```bash
+   cargo check
+   cargo clippy
+   cargo fmt --check
+   ```
+5. **Test** on desktop and Android if possible
+6. **Submit a pull request** with a clear description
+
+### Code Style
+
+- Follow Rust standard conventions (`rustfmt`)
+- Use `clippy` lints
+- Write docs for public APIs
+- Keep functions small and focused
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License - see [LICENSE](LICENSE) file for details.
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run `cargo check` and `cargo test`
-5. Submit a pull request
+Copyright (c) 2024 intmc contributors

@@ -4,3 +4,8 @@
 .idea/
 .vscode/
 /jni/libs/
+/jni/build/
+*.o
+Cargo.lock
+intmc.db
+servers/
