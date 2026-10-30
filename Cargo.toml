@@ -5,7 +5,7 @@ edition = "2024"
 
 [lib]
 name = "intmc"
-path = "src/main.rs"
+path = "src/android_main.rs"
 crate-type = ["cdylib"]
 
 [[bin]]
@@ -23,6 +23,7 @@ env_logger = "0.10"
 
 # UI (egui-based, lightweight)
 egui = "0.37"
+egui-wgpu = "0.37"
 eframe = { version = "0.37", features = ["wgpu", "android-native-activity"], default-features = false }
 
 # Async runtime

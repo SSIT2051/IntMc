@@ -39,7 +39,23 @@ pub struct IntmcApp {
 impl IntmcApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         let db_path = Self::get_db_path();
-        let storage = Storage::open(&db_path).expect("Failed to open database");
+        
+        // Ensure parent directory exists
+        if let Some(parent) = db_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        
+        let storage = match Storage::open(&db_path) {
+            Ok(s) => s,
+            Err(e) => {
+                log::error!("Failed to open database: {}. Using in-memory fallback.", e);
+                // Try to create a new database
+                Storage::open(&db_path).unwrap_or_else(|_| {
+                    log::error!("Critical: Could not create database at {:?}", db_path);
+                    panic!("Failed to initialize database")
+                })
+            }
+        };
         
         let playit = PlayitManager::new();
         let lan = LanDiscovery::new().ok();
@@ -63,7 +79,7 @@ impl IntmcApp {
     fn get_db_path() -> PathBuf {
         #[cfg(target_os = "android")]
         {
-            PathBuf::from("/data/data/intmc/intmc.db")
+            PathBuf::from("/data/data/rust.intmc/intmc.db")
         }
         #[cfg(not(target_os = "android"))]
         {
@@ -74,7 +90,7 @@ impl IntmcApp {
     fn get_server_path(server_id: &str) -> PathBuf {
         #[cfg(target_os = "android")]
         {
-            PathBuf::from(format!("/data/data/intmc/servers/{}", server_id))
+            PathBuf::from(format!("/data/data/rust.intmc/servers/{}", server_id))
         }
         #[cfg(not(target_os = "android"))]
         {

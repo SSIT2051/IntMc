@@ -895,6 +895,7 @@ dependencies = [
  "android_logger",
  "eframe",
  "egui",
+ "egui-wgpu",
  "env_logger",
  "log",
  "md5",
