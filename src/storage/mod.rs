@@ -135,6 +135,14 @@ impl Storage {
         Ok(())
     }
 
+    pub fn update_server_ip(&self, id: &str, ip: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE servers SET ip = ?1 WHERE id = ?2",
+            rusqlite::params![ip, id],
+        )?;
+        Ok(())
+    }
+
     pub fn insert_plugin(&self, server_id: &str, plugin: &PluginInfo) -> Result<()> {
         self.conn.execute(
             "INSERT OR REPLACE INTO plugins (server_id, name, version, source, format, enabled)

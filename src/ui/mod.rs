@@ -1,33 +1,188 @@
-use eframe::egui::*;
-use crate::storage::ServerMetadata;
+mod theme;
+mod servers;
+mod marketplace;
+mod lan;
+mod settings;
+mod file_browser;
+mod logs;
+mod resources;
+mod create_server;
+mod components;
+
+pub use theme::*;
+pub use servers::*;
+pub use marketplace::*;
+pub use lan::*;
+pub use settings::*;
+pub use file_browser::*;
+pub use logs::*;
+pub use resources::*;
+pub use create_server::*;
+pub use components::*;
+
+use eframe::egui::{Color32, Context, Ui, FontDefinitions, FontFamily, FontData, Vec2, Align2};
+use crate::storage::{Storage, ServerMetadata, PluginInfo, PluginFormat};
 use crate::app::AppMessage;
+use crate::lan::LanServer;
+use crate::plugins::PluginEntry;
+use crate::playit::PlayitManager;
+use crate::server::{ServerBackendType, get_backend, ServerConfig};
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::process::Child;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use log::{info, warn, error};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Tab {
+    Servers,
+    Marketplace,
+    LAN,
+    Settings,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServerDetailTab {
+    Overview,
+    Console,
+    Files,
+    Plugins,
+    Resources,
+    Settings,
+}
+
+#[derive(Debug, Clone)]
+pub struct ServerDetailState {
+    pub server_id: String,
+    pub active_tab: ServerDetailTab,
+    pub console_logs: Vec<String>,
+    pub follow_console: bool,
+    pub selected_file: Option<PathBuf>,
+    pub file_browser_path: PathBuf,
+    pub show_delete_confirm: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct CreateServerState {
+    pub step: CreateServerStep,
+    pub name: String,
+    pub backend: ServerBackendType,
+    pub version: String,
+    pub port: u16,
+    pub memory_mb: usize,
+    pub auto_tunnel: bool,
+    pub selected_version_index: usize,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CreateServerStep {
+    Basic,
+    Version,
+    Advanced,
+    Confirm,
+}
+
+#[derive(Debug, Clone)]
+pub struct MarketplaceState {
+    pub search_query: String,
+    pub selected_format: Option<PluginFormat>,
+    pub selected_category: Option<String>,
+    pub plugins: Vec<PluginEntry>,
+    pub filtered_plugins: Vec<PluginEntry>,
+    pub loading: bool,
+    pub error: Option<String>,
+    pub installing: HashMap<String, bool>,
+    pub server_id: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LanState {
+    pub servers: Vec<LanServer>,
+    pub discovering: bool,
+    pub error: Option<String>,
+    pub announce_enabled: bool,
+    pub announce_name: String,
+    pub announce_port: u16,
+}
+
+#[derive(Debug, Clone)]
+pub struct SettingsState {
+    pub playit_email: String,
+    pub playit_token: String,
+    pub playit_logged_in: bool,
+    pub theme_dark: bool,
+    pub notifications_enabled: bool,
+    pub auto_refresh: bool,
+    pub refresh_interval_secs: u64,
+    pub storage_path: String,
+    pub max_log_lines: usize,
+    pub show_advanced: bool,
+    pub error: Option<String>,
+    pub status: Option<String>,
+}
 
 pub struct IntmcUI {
-    servers: Vec<ServerMetadata>,
-    selected_server: Option<String>,
-    show_create_dialog: bool,
-    new_server_name: String,
-    new_server_backend: usize,
-    new_server_port: String,
-    error_message: Option<String>,
-    status_message: Option<String>,
-    lan_servers: Vec<crate::lan::LanServer>,
-    show_lan_dialog: bool,
+    pub active_tab: Tab,
+    pub servers: Vec<ServerMetadata>,
+    pub selected_server: Option<String>,
+    pub server_detail: Option<ServerDetailState>,
+    pub create_server: Option<CreateServerState>,
+    pub marketplace: MarketplaceState,
+    pub lan: LanState,
+    pub settings: SettingsState,
+    pub error_message: Option<String>,
+    pub status_message: Option<String>,
+    pub show_global_error: bool,
+    pub show_global_status: bool,
 }
 
 impl IntmcUI {
     pub fn new() -> Self {
         Self {
+            active_tab: Tab::Servers,
             servers: Vec::new(),
             selected_server: None,
-            show_create_dialog: false,
-            new_server_name: String::new(),
-            new_server_backend: 0,
-            new_server_port: "25565".to_string(),
+            server_detail: None,
+            create_server: None,
+            marketplace: MarketplaceState {
+                search_query: String::new(),
+                selected_format: None,
+                selected_category: None,
+                plugins: Vec::new(),
+                filtered_plugins: Vec::new(),
+                loading: false,
+                error: None,
+                installing: HashMap::new(),
+                server_id: None,
+            },
+            lan: LanState {
+                servers: Vec::new(),
+                discovering: false,
+                error: None,
+                announce_enabled: false,
+                announce_name: "intmc Server".to_string(),
+                announce_port: 25565,
+            },
+            settings: SettingsState {
+                playit_email: String::new(),
+                playit_token: String::new(),
+                playit_logged_in: false,
+                theme_dark: true,
+                notifications_enabled: true,
+                auto_refresh: true,
+                refresh_interval_secs: 30,
+                storage_path: String::new(),
+                max_log_lines: 1000,
+                show_advanced: false,
+                error: None,
+                status: None,
+            },
             error_message: None,
             status_message: None,
-            lan_servers: Vec::new(),
-            show_lan_dialog: false,
+            show_global_error: false,
+            show_global_status: false,
         }
     }
 
@@ -35,212 +190,277 @@ impl IntmcUI {
         self.servers = servers;
     }
 
-    pub fn set_lan_servers(&mut self, servers: Vec<crate::lan::LanServer>) {
-        self.lan_servers = servers;
+    pub fn set_lan_servers(&mut self, servers: Vec<LanServer>) {
+        self.lan.servers = servers;
+        self.lan.discovering = false;
     }
 
     pub fn set_error(&mut self, msg: Option<String>) {
-        self.error_message = msg;
+        if let Some(msg) = msg {
+            self.error_message = Some(msg);
+            self.show_global_error = true;
+        }
     }
 
     pub fn set_status(&mut self, msg: Option<String>) {
-        self.status_message = msg;
+        if let Some(msg) = msg {
+            self.status_message = Some(msg);
+            self.show_global_status = true;
+        }
+    }
+
+    pub fn clear_messages(&mut self) {
+        self.error_message = None;
+        self.status_message = None;
+        self.show_global_error = false;
+        self.show_global_status = false;
+    }
+
+    pub fn open_server_detail(&mut self, server_id: String, storage: &Arc<Mutex<Storage>>) {
+        if let Some(server) = self.servers.iter().find(|s| s.id == server_id) {
+            let file_browser_path = server.path.clone();
+            self.server_detail = Some(ServerDetailState {
+                server_id: server.id.clone(),
+                active_tab: ServerDetailTab::Overview,
+                console_logs: Vec::new(),
+                follow_console: true,
+                selected_file: None,
+                file_browser_path,
+                show_delete_confirm: false,
+            });
+            self.selected_server = Some(server.id.clone());
+        }
+    }
+
+    pub fn close_server_detail(&mut self) {
+        self.server_detail = None;
+        self.selected_server = None;
+    }
+
+    pub fn start_create_server(&mut self) {
+        self.create_server = Some(CreateServerState {
+            step: CreateServerStep::Basic,
+            name: String::new(),
+            backend: ServerBackendType::Pumpkin,
+            version: "1.21".to_string(),
+            port: 25565,
+            memory_mb: 1024,
+            auto_tunnel: true,
+            selected_version_index: 0,
+            error: None,
+        });
+    }
+
+    pub fn cancel_create_server(&mut self) {
+        self.create_server = None;
     }
 
     /// Returns AppMessages triggered by user interactions
-    pub fn render(&mut self, ui: &mut Ui) -> Vec<AppMessage> {
+    pub fn render(&mut self, ui: &mut Ui, storage: &Arc<Mutex<Storage>>, playit: &PlayitManager) -> Vec<AppMessage> {
         let mut messages = Vec::new();
-        
-        // Apply dark theme styling
-        let mut style = (*ui.style()).as_ref().clone();
-        style.spacing.item_spacing = Vec2::splat(8.0);
-        ui.set_style(style);
-        
-        // Header
-        ui.heading("intmc");
-        ui.label("Minecraft Server Hosting for Mobile");
-        ui.add_space(8.0);
 
-        // Error/Status messages
-        if let Some(err) = &self.error_message {
-            ui.colored_label(Color32::RED, err);
-            ui.add_space(4.0);
-        }
-        if let Some(status) = &self.status_message {
-            ui.colored_label(Color32::GREEN, status);
-            ui.add_space(4.0);
-        }
+        // Apply theme
+        setup_material3_theme(ui.ctx());
 
-        // Action buttons row
-        ui.horizontal(|ui| {
-            if ui.button("Create Server").clicked() {
-                self.show_create_dialog = true;
-            }
-            if ui.button("Refresh").clicked() {
-                messages.push(AppMessage::RefreshServers);
-            }
-            if ui.button("LAN").clicked() {
-                self.show_lan_dialog = true;
-                messages.push(AppMessage::DiscoverLan);
-            }
-        });
-        ui.add_space(8.0);
+        // Global error/status toasts
+        self.render_toasts(ui);
 
-        // Server list
-        if self.servers.is_empty() {
-            ui.centered_and_justified(|ui| {
-                ui.label("No servers yet. Create one to get started!");
-            });
-        } else {
-            // Clone servers to avoid borrowing issues
-            let servers = self.servers.clone();
-            ScrollArea::vertical().show(ui, |ui| {
-                for server in &servers {
-                    if let Some(msg) = self.render_server_card(ui, server) {
-                        messages.push(msg);
-                    }
-                }
-            });
-        }
-
-        // Create dialog
-        if self.show_create_dialog {
-            let mut should_close = false;
-            Window::new("Create New Server")
-                .collapsible(false)
-                .resizable(false)
-                .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
-                .show(ui.ctx(), |ui| {
-                    ui.label("Server Name");
-                    ui.text_edit_singleline(&mut self.new_server_name);
-                    ui.add_space(4.0);
-
-                    ui.label("Backend");
-                    ComboBox::from_label("").selected_text(match self.new_server_backend {
-                        0 => "PumpkinMC",
-                        1 => "SteelMC",
-                        2 => "Rosewater",
-                        3 => "Glowstone-rs",
-                        _ => "Unknown",
-                    }).show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.new_server_backend, 0, "PumpkinMC");
-                        ui.selectable_value(&mut self.new_server_backend, 1, "SteelMC");
-                        ui.selectable_value(&mut self.new_server_backend, 2, "Rosewater");
-                        ui.selectable_value(&mut self.new_server_backend, 3, "Glowstone-rs");
-                    });
-                    ui.add_space(4.0);
-
-                    ui.label("Port");
-                    ui.text_edit_singleline(&mut self.new_server_port);
-                    ui.add_space(8.0);
-
-                    ui.horizontal(|ui| {
-                        if ui.button("Create").clicked() {
-                            if !self.new_server_name.is_empty() {
-                                let backend = match self.new_server_backend {
-                                    0 => crate::server::ServerBackendType::Pumpkin,
-                                    1 => crate::server::ServerBackendType::Steel,
-                                    2 => crate::server::ServerBackendType::Rosewater,
-                                    _ => crate::server::ServerBackendType::Glowstone,
-                                };
-                                let port: u16 = self.new_server_port.parse().unwrap_or(25565);
-                                messages.push(AppMessage::CreateServer {
-                                    name: self.new_server_name.clone(),
-                                    backend,
-                                    port,
-                                });
-                                self.new_server_name.clear();
-                                self.new_server_port = "25565".to_string();
-                            }
-                            should_close = true;
-                        }
-                        if ui.button("Cancel").clicked() {
-                            self.new_server_name.clear();
-                            should_close = true;
-                        }
-                    });
-                });
-            if should_close {
-                self.show_create_dialog = false;
-            }
-        }
-
-        // LAN dialog
-        if self.show_lan_dialog && !self.lan_servers.is_empty() {
-            let mut open = true;
-            Window::new("LAN Servers")
-                .collapsible(false)
-                .resizable(false)
-                .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
-                .open(&mut open)
-                .show(ui.ctx(), |ui| {
-                    ui.label("Servers on local network:");
-                    ui.add_space(4.0);
-                    for lan_server in &self.lan_servers {
-                        ui.horizontal(|ui| {
-                            ui.vertical(|ui| {
-                                ui.label(&lan_server.name);
-                                ui.label(format!("{}:{}", lan_server.ip, lan_server.port));
-                                ui.label(format!("{} players/{}", lan_server.players_online, lan_server.max_players));
-                            });
-                            if ui.button("Join").clicked() {
-                                messages.push(AppMessage::JoinLanServer {
-                                    name: lan_server.name.clone(),
-                                    ip: lan_server.ip.clone(),
-                                    port: lan_server.port,
-                                });
-                            }
-                        });
-                    }
-                });
-            self.show_lan_dialog = open;
-        }
+        // Main layout with bottom navigation
+        self.render_main_layout(ui, storage, playit, &mut messages);
 
         messages
     }
 
-    fn render_server_card(&mut self, ui: &mut Ui, server: &ServerMetadata) -> Option<AppMessage> {
-        let mut clicked_msg: Option<AppMessage> = None;
-        
-        Frame::default()
-            .fill(Color32::from_rgb(30, 30, 35))
-            .corner_radius(CornerRadius::same(8))
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.vertical(|ui| {
-                        ui.heading(&server.name);
-                        ui.label(format!("Backend: {}", server.backend));
-                        ui.label(format!("Version: {}", server.version));
-                        ui.label(format!("Port: {}", server.port));
-                        if !server.ip.is_empty() {
-                            ui.label(format!("IP: {}", server.ip));
-                        }
-                        if server.is_running {
-                            ui.colored_label(Color32::GREEN, "● Running");
-                        } else {
-                            ui.colored_label(Color32::RED, "● Stopped");
-                        }
+    fn render_toasts(&mut self, ui: &mut Ui) {
+        if self.show_global_error {
+            if let Some(err) = &self.error_message {
+                egui::Area::new("global_error".into())
+                    .anchor(Align2::CENTER_TOP, Vec2::new(0.0, 12.0))
+                    .show(ui.ctx(), |ui| {
+                        egui::Frame::default()
+                            .fill(ERROR_CONTAINER)
+                            .stroke(Stroke::new(1.0, ERROR))
+                            .rounding(Rounding::same(12.0))
+                            .inner_margin(egui::Margin::symmetric(16.0, 12.0))
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.colored_label(ERROR, "⚠");
+                                    ui.label(egui::RichText::new(err).color(ON_SURFACE).size(14.0));
+                                    if ui.small_button("✕").clicked() {
+                                        self.show_global_error = false;
+                                        self.error_message = None;
+                                    }
+                                });
+                            });
                     });
-                    ui.with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
-                        if server.is_running {
-                            if ui.button("Stop").clicked() {
-                                clicked_msg = Some(AppMessage::StopServer { server_id: server.id.clone() });
-                            }
-                        } else {
-                            if ui.button("Start").clicked() {
-                                clicked_msg = Some(AppMessage::StartServer { server_id: server.id.clone() });
-                            }
-                        }
-                        if ui.button("Settings").clicked() {
-                            clicked_msg = Some(AppMessage::OpenSettings { server_id: server.id.clone() });
-                        }
-                        if ui.button("Delete").clicked() {
-                            clicked_msg = Some(AppMessage::DeleteServer { server_id: server.id.clone() });
-                        }
+            }
+        }
+
+        if self.show_global_status {
+            if let Some(status) = &self.status_message {
+                egui::Area::new("global_status".into())
+                    .anchor(Align2::CENTER_TOP, Vec2::new(0.0, 12.0))
+                    .show(ui.ctx(), |ui| {
+                        egui::Frame::default()
+                            .fill(SUCCESS.linear_multiply(0.15))
+                            .stroke(Stroke::new(1.0, SUCCESS))
+                            .rounding(Rounding::same(12.0))
+                            .inner_margin(egui::Margin::symmetric(16.0, 12.0))
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.colored_label(SUCCESS, "✓");
+                                    ui.label(egui::RichText::new(status).color(ON_SURFACE).size(14.0));
+                                    if ui.small_button("✕").clicked() {
+                                        self.show_global_status = false;
+                                        self.status_message = None;
+                                    }
+                                });
+                            });
                     });
+            }
+        }
+    }
+
+    fn render_main_layout(&mut self, ui: &mut Ui, storage: &Arc<Mutex<Storage>>, playit: &PlayitManager, messages: &mut Vec<AppMessage>) {
+        egui::CentralPanel::default().show(ui, |ui| {
+            ui.vertical(|ui| {
+                // Top app bar
+                self.render_top_bar(ui, messages);
+
+                ui.add_space(8.0);
+
+                // Content area
+                egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+                    match self.active_tab {
+                        Tab::Servers => self.render_servers_tab(ui, storage, playit, messages),
+                        Tab::Marketplace => self.render_marketplace_tab(ui, storage, playit, messages),
+                        Tab::LAN => self.render_lan_tab(ui, storage, playit, messages),
+                        Tab::Settings => self.render_settings_tab(ui, storage, playit, messages),
+                    }
                 });
+
+                ui.add_space(8.0);
+
+                // Bottom navigation bar
+                self.render_bottom_nav(ui);
             });
+        });
+
+        // Modal dialogs
+        if let Some(create_state) = &mut self.create_server.clone() {
+            let mut create_state = create_state.clone();
+            let mut should_close = false;
+            let mut create_messages = Vec::new();
+            
+            self.render_create_server_dialog(ui.ctx(), &mut create_state, &mut should_close, &mut create_messages);
+            
+            if should_close {
+                self.create_server = None;
+            } else {
+                self.create_server = Some(create_state);
+            }
+            messages.extend(create_messages);
+        }
+
+        if let Some(detail) = &mut self.server_detail.clone() {
+            let server = self.servers.iter().find(|s| s.id == detail.server_id).cloned();
+            if let Some(server) = server {
+                let mut detail = detail.clone();
+                let mut detail_messages = Vec::new();
+                
+                self.render_server_detail_dialog(ui.ctx(), &server, storage, playit, &mut detail, &mut detail_messages);
+                
+                if detail_messages.iter().any(|m| matches!(m, AppMessage::DeleteServer { .. })) {
+                    self.server_detail = None;
+                    self.selected_server = None;
+                } else {
+                    self.server_detail = Some(detail);
+                }
+                messages.extend(detail_messages);
+            } else {
+                self.server_detail = None;
+                self.selected_server = None;
+            }
+        }
+    }
+
+    fn render_top_bar(&mut self, ui: &mut Ui, _messages: &mut Vec<AppMessage>) {
+        ui.horizontal(|ui| {
+            ui.add_space(16.0);
+            ui.heading(egui::RichText::new("intmc").color(PRIMARY).size(28.0));
+            ui.label(egui::RichText::new("Minecraft Server Hosting").color(ON_SURFACE_VARIANT).size(14.0));
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.add_space(16.0);
+                // Theme toggle
+                if icon_button(ui, if self.settings.theme_dark { "☀" } else { "🌙" }, false).clicked() {
+                    self.settings.theme_dark = !self.settings.theme_dark;
+                }
+                ui.add_space(8.0);
+                // Refresh button
+                if icon_button(ui, "↻", false).on_hover_text("Refresh").clicked() {
+                    // Trigger refresh
+                }
+            });
+        });
+        ui.separator();
+    }
+
+    fn render_bottom_nav(&mut self, ui: &mut Ui) {
         ui.add_space(8.0);
-        clicked_msg
+        ui.separator();
+        ui.add_space(8.0);
+        ui.horizontal(|ui| {
+            let tabs = [
+                (Tab::Servers, "🖥", "Servers"),
+                (Tab::Marketplace, "📦", "Marketplace"),
+                (Tab::LAN, "📡", "LAN"),
+                (Tab::Settings, "⚙", "Settings"),
+            ];
+            
+            for (tab, icon, label) in tabs {
+                let selected = self.active_tab == tab;
+                let response = ui.allocate_response(Vec2::new(ui.available_width() / 4.0, 56.0), egui::Sense::click());
+                
+                if response.clicked() {
+                    self.active_tab = tab;
+                }
+                
+                let rect = response.rect;
+                let center = rect.center();
+                
+                if selected {
+                    ui.painter().rect_filled(
+                        rect.expand(4.0),
+                        Rounding::same(16.0),
+                        PRIMARY_CONTAINER,
+                    );
+                }
+                
+                let icon_pos = center + Vec2::new(0.0, -10.0);
+                let label_pos = center + Vec2::new(0.0, 10.0);
+                
+                ui.painter().text(
+                    icon_pos,
+                    Align2::CENTER_CENTER,
+                    icon,
+                    FontId::new(24.0, FontFamily::Proportional),
+                    if selected { PRIMARY } else { ON_SURFACE_VARIANT },
+                );
+                
+                ui.painter().text(
+                    label_pos,
+                    Align2::CENTER_CENTER,
+                    label,
+                    FontId::new(11.0, FontFamily::Proportional),
+                    if selected { PRIMARY } else { ON_SURFACE_VARIANT },
+                );
+            }
+        });
+    }
+}
+
+impl Default for IntmcUI {
+    fn default() -> Self {
+        Self::new()
     }
 }
