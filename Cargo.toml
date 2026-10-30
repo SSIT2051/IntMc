@@ -23,7 +23,7 @@ env_logger = "0.10"
 
 # UI (egui-based, lightweight)
 egui = "0.37"
-eframe = { version = "0.37", features = ["wgpu"] }
+eframe = { version = "0.37", features = ["wgpu", "android-native-activity"], default-features = false }
 
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }
