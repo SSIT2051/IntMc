@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::process::Child;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -61,15 +63,19 @@ pub enum ServerError {
     StopFailed(String),
 }
 
+// Type alias for a process with captured stdout/stderr
+pub type ServerProcess = Arc<Mutex<tokio::process::Child>>;
+
 pub trait ServerBackend: Send + Sync {
     fn name(&self) -> &str;
     fn supported_versions(&self) -> Vec<&str>;
     fn binary_name(&self) -> &str;
     fn default_args(&self, config: &ServerConfig) -> Vec<String>;
     fn prepare(&self, config: &ServerConfig) -> Result<(), ServerError>;
-    fn start(&self, config: &ServerConfig) -> Result<Child, ServerError>;
-    fn stop(&self, child: &mut Child) -> Result<(), ServerError>;
-    fn is_running(&self, child: &mut Child) -> bool;
+    fn start(&self, config: &ServerConfig) -> Result<ServerProcess, ServerError>;
+    fn stop(&self, process: &ServerProcess) -> Result<(), ServerError>;
+    fn is_running(&self, process: &ServerProcess) -> bool;
+    fn get_logs(&self, process: &ServerProcess) -> Vec<String>;
 }
 
 pub fn get_backend(backend: &ServerBackendType) -> Box<dyn ServerBackend + Send + Sync> {
@@ -83,7 +89,8 @@ pub fn get_backend(backend: &ServerBackendType) -> Box<dyn ServerBackend + Send 
 
 pub mod pumpkin {
     use super::*;
-    use std::process::Command;
+    use tokio::process::Command;
+    use tokio::io::{AsyncBufReadExt, BufReader};
 
     pub struct PumpkinBackend;
 
@@ -101,24 +108,36 @@ pub mod pumpkin {
             std::fs::create_dir_all(config.path.join("world"))?;
             Ok(())
         }
-        fn start(&self, config: &ServerConfig) -> Result<Child, ServerError> {
+        fn start(&self, config: &ServerConfig) -> Result<ServerProcess, ServerError> {
             let mut cmd = Command::new(self.binary_name());
             cmd.args(self.default_args(config));
             cmd.current_dir(&config.path);
-            cmd.spawn().map_err(|e| ServerError::StartFailed(e.to_string()))
+            cmd.stdout(std::process::Stdio::piped());
+            cmd.stderr(std::process::Stdio::piped());
+            cmd.stdin(std::process::Stdio::piped());
+            
+            let child = cmd.spawn().map_err(|e| ServerError::StartFailed(e.to_string()))?;
+            Ok(Arc::new(Mutex::new(child)))
         }
-        fn stop(&self, child: &mut Child) -> Result<(), ServerError> {
+        fn stop(&self, process: &ServerProcess) -> Result<(), ServerError> {
+            let mut child = process.blocking_lock();
             child.kill().map_err(|e| ServerError::StopFailed(e.to_string()))
         }
-        fn is_running(&self, child: &mut Child) -> bool {
+        fn is_running(&self, process: &ServerProcess) -> bool {
+            let mut child = process.blocking_lock();
             child.try_wait().map(|opt| opt.is_none()).unwrap_or(false)
+        }
+        fn get_logs(&self, process: &ServerProcess) -> Vec<String> {
+            // Note: For real-time logs, we'd need a separate log reader task
+            // This is a placeholder - actual implementation would stream logs
+            vec![]
         }
     }
 }
 
 pub mod steel {
     use super::*;
-    use std::process::Command;
+    use tokio::process::Command;
 
     pub struct SteelBackend;
 
@@ -136,24 +155,34 @@ pub mod steel {
             std::fs::create_dir_all(config.path.join("world"))?;
             Ok(())
         }
-        fn start(&self, config: &ServerConfig) -> Result<Child, ServerError> {
+        fn start(&self, config: &ServerConfig) -> Result<ServerProcess, ServerError> {
             let mut cmd = Command::new(self.binary_name());
             cmd.args(self.default_args(config));
             cmd.current_dir(&config.path);
-            cmd.spawn().map_err(|e| ServerError::StartFailed(e.to_string()))
+            cmd.stdout(std::process::Stdio::piped());
+            cmd.stderr(std::process::Stdio::piped());
+            cmd.stdin(std::process::Stdio::piped());
+            
+            let child = cmd.spawn().map_err(|e| ServerError::StartFailed(e.to_string()))?;
+            Ok(Arc::new(Mutex::new(child)))
         }
-        fn stop(&self, child: &mut Child) -> Result<(), ServerError> {
+        fn stop(&self, process: &ServerProcess) -> Result<(), ServerError> {
+            let mut child = process.blocking_lock();
             child.kill().map_err(|e| ServerError::StopFailed(e.to_string()))
         }
-        fn is_running(&self, child: &mut Child) -> bool {
+        fn is_running(&self, process: &ServerProcess) -> bool {
+            let mut child = process.blocking_lock();
             child.try_wait().map(|opt| opt.is_none()).unwrap_or(false)
+        }
+        fn get_logs(&self, process: &ServerProcess) -> Vec<String> {
+            vec![]
         }
     }
 }
 
 pub mod rosewater {
     use super::*;
-    use std::process::Command;
+    use tokio::process::Command;
 
     pub struct RosewaterBackend;
 
@@ -170,24 +199,34 @@ pub mod rosewater {
             std::fs::create_dir_all(config.path.join("world"))?;
             Ok(())
         }
-        fn start(&self, config: &ServerConfig) -> Result<Child, ServerError> {
+        fn start(&self, config: &ServerConfig) -> Result<ServerProcess, ServerError> {
             let mut cmd = Command::new(self.binary_name());
             cmd.args(self.default_args(config));
             cmd.current_dir(&config.path);
-            cmd.spawn().map_err(|e| ServerError::StartFailed(e.to_string()))
+            cmd.stdout(std::process::Stdio::piped());
+            cmd.stderr(std::process::Stdio::piped());
+            cmd.stdin(std::process::Stdio::piped());
+            
+            let child = cmd.spawn().map_err(|e| ServerError::StartFailed(e.to_string()))?;
+            Ok(Arc::new(Mutex::new(child)))
         }
-        fn stop(&self, child: &mut Child) -> Result<(), ServerError> {
+        fn stop(&self, process: &ServerProcess) -> Result<(), ServerError> {
+            let mut child = process.blocking_lock();
             child.kill().map_err(|e| ServerError::StopFailed(e.to_string()))
         }
-        fn is_running(&self, child: &mut Child) -> bool {
+        fn is_running(&self, process: &ServerProcess) -> bool {
+            let mut child = process.blocking_lock();
             child.try_wait().map(|opt| opt.is_none()).unwrap_or(false)
+        }
+        fn get_logs(&self, process: &ServerProcess) -> Vec<String> {
+            vec![]
         }
     }
 }
 
 pub mod glowstone {
     use super::*;
-    use std::process::Command;
+    use tokio::process::Command;
 
     pub struct GlowstoneBackend;
 
@@ -204,17 +243,27 @@ pub mod glowstone {
             std::fs::create_dir_all(config.path.join("world"))?;
             Ok(())
         }
-        fn start(&self, config: &ServerConfig) -> Result<Child, ServerError> {
+        fn start(&self, config: &ServerConfig) -> Result<ServerProcess, ServerError> {
             let mut cmd = Command::new(self.binary_name());
             cmd.args(self.default_args(config));
             cmd.current_dir(&config.path);
-            cmd.spawn().map_err(|e| ServerError::StartFailed(e.to_string()))
+            cmd.stdout(std::process::Stdio::piped());
+            cmd.stderr(std::process::Stdio::piped());
+            cmd.stdin(std::process::Stdio::piped());
+            
+            let child = cmd.spawn().map_err(|e| ServerError::StartFailed(e.to_string()))?;
+            Ok(Arc::new(Mutex::new(child)))
         }
-        fn stop(&self, child: &mut Child) -> Result<(), ServerError> {
+        fn stop(&self, process: &ServerProcess) -> Result<(), ServerError> {
+            let mut child = process.blocking_lock();
             child.kill().map_err(|e| ServerError::StopFailed(e.to_string()))
         }
-        fn is_running(&self, child: &mut Child) -> bool {
+        fn is_running(&self, process: &ServerProcess) -> bool {
+            let mut child = process.blocking_lock();
             child.try_wait().map(|opt| opt.is_none()).unwrap_or(false)
+        }
+        fn get_logs(&self, process: &ServerProcess) -> Vec<String> {
+            vec![]
         }
     }
 }

@@ -3,12 +3,13 @@ use std::path::PathBuf;
 use std::process::Child;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::storage::{Storage, ServerMetadata, PluginInfo, PluginFormat};
 use crate::ui::{IntmcUI, Tab, ServerDetailTab, CreateServerState, CreateServerStep, MarketplaceState, LanState, SettingsState, ServerDetailState};
 use crate::playit::PlayitManager;
 use crate::lan::LanDiscovery;
-use crate::server::{ServerConfig, ServerBackendType, get_backend};
+use crate::server::{ServerConfig, ServerBackendType, get_backend, ServerProcess, ServerBackend};
 use crate::plugins::{PluginMarketplace, PluginEntry};
 use log::{info, warn, error};
 use eframe::egui::{Context, Ui, FontDefinitions, FontFamily, FontData, Vec2, Align2, Color32, Rounding, Stroke, RichText, FontId, ScrollArea, Layout, Sense, TextStyle, DragValue, TextEdit};
@@ -22,12 +23,14 @@ use crate::ui::create_server::{render_create_server_dialog, CreateServerData};
 
 #[derive(Debug, Clone)]
 pub enum AppMessage {
+    ShowCreateServerDialog,
     CreateServer { name: String, backend: ServerBackendType, port: u16 },
     StartServer { server_id: String },
     StopServer { server_id: String },
     RestartServer { server_id: String },
     DeleteServer { server_id: String },
     RefreshServers,
+    RefreshMarketplace,
     DiscoverLan,
     JoinLanServer { name: String, ip: String, port: u16 },
     OpenSettings { server_id: String },
@@ -54,11 +57,10 @@ pub struct IntmcApp {
     playit: PlayitManager,
     lan: Option<LanDiscovery>,
     storage: Arc<Mutex<Storage>>,
-    running_servers: Arc<Mutex<HashMap<String, Child>>>,
+    running_servers: Arc<Mutex<HashMap<String, ServerProcess>>>,
     plugin_marketplace: PluginMarketplace,
     resource_monitors: Arc<Mutex<HashMap<String, ResourceMonitor>>>,
     log_viewers: Arc<Mutex<HashMap<String, LogViewer>>>,
-    server_processes: Arc<Mutex<HashMap<String, tokio::process::Child>>>,
     error_message: Option<String>,
     status_message: Option<String>,
     lan_servers: Vec<crate::lan::LanServer>,
@@ -109,7 +111,6 @@ impl IntmcApp {
         let running_servers = Arc::new(Mutex::new(HashMap::new()));
         let resource_monitors = Arc::new(Mutex::new(HashMap::new()));
         let log_viewers = Arc::new(Mutex::new(HashMap::new()));
-        let server_processes = Arc::new(Mutex::new(HashMap::new()));
         let ui = IntmcUI::new();
         
         Self {
@@ -121,7 +122,6 @@ impl IntmcApp {
             plugin_marketplace,
             resource_monitors,
             log_viewers,
-            server_processes,
             error_message: None,
             status_message: None,
             lan_servers: Vec::new(),
@@ -167,6 +167,12 @@ impl IntmcApp {
     pub fn process_messages(&mut self, messages: Vec<AppMessage>, ctx: &Context) {
         for msg in messages {
             match msg {
+                AppMessage::ShowCreateServerDialog => {
+                    self.ui.start_create_server();
+                }
+                AppMessage::RefreshMarketplace => {
+                    self.refresh_marketplace_sync();
+                }
                 AppMessage::CreateServer { name, backend, port } => {
                     let result = self.create_server_sync(name, backend, port);
                     match &result {
@@ -352,6 +358,14 @@ impl IntmcApp {
     fn discover_lan_servers_sync(&self) -> Vec<crate::lan::LanServer> {
         let runtime = tokio::runtime::Runtime::new().expect("runtime");
         runtime.block_on(self.discover_lan_servers())
+    }
+
+    fn refresh_marketplace_sync(&mut self) {
+        let runtime = tokio::runtime::Runtime::new().expect("runtime");
+        let plugins = runtime.block_on(self.refresh_marketplace());
+        self.ui.marketplace.loading = false;
+        self.ui.marketplace.plugins = plugins.clone();
+        self.ui.marketplace.filtered_plugins = plugins;
     }
 
     // New sync wrappers for additional functionality
@@ -568,6 +582,10 @@ impl IntmcApp {
         }
     }
 
+    pub async fn refresh_marketplace(&self) -> Vec<crate::plugins::PluginEntry> {
+        self.plugin_marketplace.search_plugins("", None).await.unwrap_or_default()
+    }
+
     // New async methods for additional functionality
     pub async fn install_plugin(&self, server_id: &str, plugin_name: &str, plugin_url: &str) -> Result<(), String> {
         let storage = self.storage.lock().await;
@@ -582,26 +600,40 @@ impl IntmcApp {
         std::fs::create_dir_all(&plugins_dir)
             .map_err(|e| format!("Failed to create plugins directory: {}", e))?;
         
-        // Download plugin using curl
-        let filename = format!("{}.jar", plugin_name);
-        let dest = plugins_dir.join(&filename);
-        
-        let output = tokio::process::Command::new("curl")
-            .args(["-sSL", "-o", &dest.to_string_lossy(), plugin_url])
-            .output()
+        // Download plugin using reqwest (pure Rust, works on Android)
+        let client = reqwest::Client::new();
+        let response = client.get(plugin_url)
+            .send()
             .await
             .map_err(|e| format!("Download failed: {}", e))?;
         
-        if !output.status.success() {
-            return Err(format!("Download failed: {}", String::from_utf8_lossy(&output.stderr)));
+        if !response.status().is_success() {
+            return Err(format!("Download failed: HTTP {}", response.status()));
         }
+        
+        let bytes = response.bytes()
+            .await
+            .map_err(|e| format!("Failed to read response: {}", e))?;
+        
+        // Determine file extension from URL or default to .jar
+        let extension = if plugin_url.ends_with(".wasm") { "wasm" } else { "jar" };
+        let filename = format!("{}.{}", plugin_name, extension);
+        let dest = plugins_dir.join(&filename);
+        
+        tokio::fs::write(&dest, &bytes)
+            .await
+            .map_err(|e| format!("Failed to write plugin file: {}", e))?;
         
         // Save plugin info to database
         let plugin_info = crate::storage::PluginInfo {
             name: plugin_name.to_string(),
             version: "1.0.0".to_string(),
             source: plugin_url.to_string(),
-            format: crate::storage::PluginFormat::Jar,
+            format: if extension == "wasm" { 
+                crate::storage::PluginFormat::Wasm 
+            } else { 
+                crate::storage::PluginFormat::Jar 
+            },
             enabled: true,
         };
         
@@ -666,16 +698,85 @@ impl IntmcApp {
     }
 
     pub async fn send_command(&self, server_id: &str, command: &str) -> Result<(), String> {
-        let processes = self.server_processes.lock().await;
+        let processes = self.running_servers.lock().await;
         if let Some(process) = processes.get(server_id) {
-            // Write to stdin of the process
-            // This would require the process to have stdin piped
-            // For now, just log
-            info!("Sending command to {}: {}", server_id, command);
-            Ok(())
+            let mut child = process.lock().await;
+            if let Some(stdin) = child.stdin.as_mut() {
+                use tokio::io::AsyncWriteExt;
+                stdin.write_all(command.as_bytes()).await
+                    .map_err(|e| format!("Failed to write command: {}", e))?;
+                stdin.write_all(b"\n").await
+                    .map_err(|e| format!("Failed to write newline: {}", e))?;
+                Ok(())
+            } else {
+                Err("Server stdin not available".to_string())
+            }
         } else {
             Err("Server not running".to_string())
         }
+    }
+    
+    fn start_log_streaming(&self, server_id: &str) {
+        let processes = self.running_servers.clone();
+        let log_viewers = self.log_viewers.clone();
+        let server_id = server_id.to_string();
+        
+        tokio::spawn(async move {
+            let process = {
+                let processes = processes.lock().await;
+                processes.get(&server_id).cloned()
+            };
+            
+            if let Some(process) = process {
+                let mut child = process.lock().await;
+                
+                // Read stdout
+                if let Some(stdout) = child.stdout.take() {
+                    let log_viewers = log_viewers.clone();
+                    let server_id = server_id.clone();
+                    tokio::spawn(async move {
+                        let mut reader = tokio::io::BufReader::new(stdout);
+                        let mut line = String::new();
+                        loop {
+                            line.clear();
+                            match reader.read_line(&mut line).await {
+                                Ok(0) => break, // EOF
+                                Ok(_) => {
+                                    let mut viewers = log_viewers.lock().await;
+                                    if let Some(viewer) = viewers.get_mut(&server_id) {
+                                        viewer.add_log(line.trim_end().to_string());
+                                    }
+                                }
+                                Err(_) => break,
+                            }
+                        }
+                    });
+                }
+                
+                // Read stderr
+                if let Some(stderr) = child.stderr.take() {
+                    let log_viewers = log_viewers.clone();
+                    let server_id = server_id.clone();
+                    tokio::spawn(async move {
+                        let mut reader = tokio::io::BufReader::new(stderr);
+                        let mut line = String::new();
+                        loop {
+                            line.clear();
+                            match reader.read_line(&mut line).await {
+                                Ok(0) => break, // EOF
+                                Ok(_) => {
+                                    let mut viewers = log_viewers.lock().await;
+                                    if let Some(viewer) = viewers.get_mut(&server_id) {
+                                        viewer.add_log(format!("[STDERR] {}", line.trim_end()));
+                                    }
+                                }
+                                Err(_) => break,
+                            }
+                        }
+                    });
+                }
+            }
+        });
     }
 
     pub async fn update_server_config(&self, server_id: &str, config: ServerConfig) -> Result<(), String> {
@@ -702,7 +803,7 @@ impl IntmcApp {
         Ok(())
     }
 
-    pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
+pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
         let storage = self.storage.lock().await;
         let servers = storage.get_all_servers()
             .map_err(|e| format!("Failed to get servers: {}", e))?;
@@ -723,18 +824,53 @@ impl IntmcApp {
         let backup_name = format!("{}_{}.tar.gz", server.name, timestamp);
         let backup_path = backup_dir.join(&backup_name);
         
-        // Create tar.gz archive
-        let output = tokio::process::Command::new("tar")
-            .args(["-czf", &backup_path.to_string_lossy(), "-C", &server.path.to_string_lossy(), "."])
-            .output()
-            .await
-            .map_err(|e| format!("Backup failed: {}", e))?;
+        // Create tar.gz archive using pure Rust (flate2 + tar)
+        use flate2::write::GzEncoder;
+        use flate2::Compression;
+        use tar::Builder;
+        use tokio::fs::File;
+        use tokio::io::AsyncWriteExt;
         
-        if !output.status.success() {
-            return Err(format!("Backup failed: {}", String::from_utf8_lossy(&output.stderr)));
-        }
+        let file = File::create(&backup_path).await
+            .map_err(|e| format!("Failed to create backup file: {}", e))?;
+        let encoder = GzEncoder::new(file, Compression::default());
+        let mut builder = Builder::new(encoder);
+        
+        // Add all files from server directory
+        let server_path = &server.path;
+        Self::add_dir_to_tar(&mut builder, server_path, std::path::Path::new(""))
+            .map_err(|e| format!("Failed to create archive: {}", e))?;
+        
+        builder.into_inner()
+            .map_err(|e| format!("Failed to finalize archive: {}", e))?
+            .finish()
+            .map_err(|e| format!("Failed to finish compression: {}", e))?;
         
         Ok(backup_path)
+    }
+    
+    fn add_dir_to_tar<W: std::io::Write>(builder: &mut Builder<W>, base_path: &std::path::Path, relative_path: &std::path::Path) -> std::io::Result<()> {
+        let full_path = base_path.join(relative_path);
+        let entries = std::fs::read_dir(&full_path)?;
+        
+        for entry in entries {
+            let entry = entry?;
+            let path = entry.path();
+            let name = entry.file_name();
+            let relative_entry_path = relative_path.join(&name);
+            
+            if path.is_dir() {
+                Self::add_dir_to_tar(builder, base_path, &relative_entry_path)?;
+            } else {
+                let mut file = std::fs::File::open(&path)?;
+                let mut header = tar::Header::new_gnu();
+                header.set_path(&relative_entry_path)?;
+                header.set_size(entry.metadata()?.len());
+                header.set_cksum();
+                builder.append(&header, &mut file)?;
+            }
+        }
+        Ok(())
     }
 
     pub async fn restore_server(&self, server_id: &str, backup_path: &PathBuf) -> Result<(), String> {
@@ -749,18 +885,21 @@ impl IntmcApp {
         // Stop server if running
         let _ = self.stop_server(server_id).await;
         
-        // Extract backup
-        let output = tokio::process::Command::new("tar")
-            .args(["-xzf", &backup_path.to_string_lossy(), "-C", &server.path.to_string_lossy()])
-            .output()
-            .await
-            .map_err(|e| format!("Restore failed: {}", e))?;
+        // Extract backup using pure Rust (flate2 + tar)
+        use flate2::read::GzDecoder;
+        use tar::Archive;
+        use tokio::fs::File;
         
-        if !output.status.success() {
-            return Err(format!("Restore failed: {}", String::from_utf8_lossy(&output.stderr)));
-        }
+        let file = File::open(backup_path).await
+            .map_err(|e| format!("Failed to open backup file: {}", e))?;
+        let decoder = GzDecoder::new(file);
+        let mut archive = Archive::new(decoder);
         
-Ok(())
+        // Extract to server directory
+        archive.unpack(&server.path)
+            .map_err(|e| format!("Failed to extract backup: {}", e))?;
+        
+        Ok(())
     }
 
     fn render_server_detail_dialog(
@@ -912,13 +1051,21 @@ Ok(())
         use crate::ui::logs::LogViewer;
         
         // Get or create log viewer for this server
-        let log_viewer = self.log_viewers.lock().await
+        let mut log_viewer = self.log_viewers.lock().await
             .entry(server.id.clone())
             .or_insert_with(LogViewer::default)
             .clone();
         
+        // If server is running, start log streaming
+        if server.is_running {
+            self.start_log_streaming(&server.id);
+        }
+        
         // Render log viewer
         render_log_viewer(ui, &mut log_viewer);
+        
+        // Save updated log viewer back
+        self.log_viewers.lock().await.insert(server.id.clone(), log_viewer);
         
         // Command input
         ui.add_space(8.0);

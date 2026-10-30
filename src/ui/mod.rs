@@ -20,7 +20,7 @@ pub use resources::*;
 pub use create_server::*;
 pub use components::*;
 
-use eframe::egui::{Color32, Context, Ui, FontDefinitions, FontFamily, FontData, Vec2, Align2};
+use eframe::egui::{Color32, Context, Ui, FontDefinitions, FontFamily, FontData, Vec2, Align2, Rounding, Id, Stroke};
 use crate::storage::{Storage, ServerMetadata, PluginInfo, PluginFormat};
 use crate::app::AppMessage;
 use crate::lan::LanServer;
@@ -33,6 +33,7 @@ use std::process::Child;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use log::{info, warn, error};
+use super::theme::{ERROR_CONTAINER, ERROR, SUCCESS, ON_SURFACE, ON_SURFACE_VARIANT, PRIMARY, PRIMARY_CONTAINER};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
@@ -274,7 +275,7 @@ impl IntmcUI {
     fn render_toasts(&mut self, ui: &mut Ui) {
         if self.show_global_error {
             if let Some(err) = &self.error_message {
-                egui::Area::new("global_error".into())
+                egui::Area::new(Id::new("global_error"))
                     .anchor(Align2::CENTER_TOP, Vec2::new(0.0, 12.0))
                     .show(ui.ctx(), |ui| {
                         egui::Frame::default()
@@ -298,7 +299,7 @@ impl IntmcUI {
 
         if self.show_global_status {
             if let Some(status) = &self.status_message {
-                egui::Area::new("global_status".into())
+                egui::Area::new(Id::new("global_status"))
                     .anchor(Align2::CENTER_TOP, Vec2::new(0.0, 12.0))
                     .show(ui.ctx(), |ui| {
                         egui::Frame::default()
@@ -329,13 +330,13 @@ impl IntmcUI {
 
                 ui.add_space(8.0);
 
-                // Content area
+// Content area
                 egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
                     match self.active_tab {
-                        Tab::Servers => self.render_servers_tab(ui, storage, playit, messages),
-                        Tab::Marketplace => self.render_marketplace_tab(ui, storage, playit, messages),
-                        Tab::LAN => self.render_lan_tab(ui, storage, playit, messages),
-                        Tab::Settings => self.render_settings_tab(ui, storage, playit, messages),
+                        Tab::Servers => crate::ui::servers::render_servers_tab(ui, &self.servers, messages),
+                        Tab::Marketplace => crate::ui::marketplace::render_marketplace_tab(ui, &mut self.marketplace, messages),
+                        Tab::LAN => crate::ui::lan::render_lan_tab(ui, storage, playit, messages),
+                        Tab::Settings => crate::ui::settings::render_settings_tab(ui, storage, playit, messages),
                     }
                 });
 
@@ -346,42 +347,7 @@ impl IntmcUI {
             });
         });
 
-        // Modal dialogs
-        if let Some(create_state) = &mut self.create_server.clone() {
-            let mut create_state = create_state.clone();
-            let mut should_close = false;
-            let mut create_messages = Vec::new();
-            
-            self.render_create_server_dialog(ui.ctx(), &mut create_state, &mut should_close, &mut create_messages);
-            
-            if should_close {
-                self.create_server = None;
-            } else {
-                self.create_server = Some(create_state);
-            }
-            messages.extend(create_messages);
-        }
-
-        if let Some(detail) = &mut self.server_detail.clone() {
-            let server = self.servers.iter().find(|s| s.id == detail.server_id).cloned();
-            if let Some(server) = server {
-                let mut detail = detail.clone();
-                let mut detail_messages = Vec::new();
-                
-                self.render_server_detail_dialog(ui.ctx(), &server, storage, playit, &mut detail, &mut detail_messages);
-                
-                if detail_messages.iter().any(|m| matches!(m, AppMessage::DeleteServer { .. })) {
-                    self.server_detail = None;
-                    self.selected_server = None;
-                } else {
-                    self.server_detail = Some(detail);
-                }
-                messages.extend(detail_messages);
-            } else {
-                self.server_detail = None;
-                self.selected_server = None;
-            }
-        }
+        // Modal dialogs are handled by the app layer
     }
 
     fn render_top_bar(&mut self, ui: &mut Ui, _messages: &mut Vec<AppMessage>) {

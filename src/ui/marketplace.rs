@@ -1,42 +1,46 @@
-use eframe::egui::{Color32, Ui, Vec2, Align2, Rounding, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextStyle, TextEdit, ComboBox, TextEdit};
+use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextEdit, ComboBox};
 use crate::storage::{PluginInfo, PluginFormat};
 use crate::plugins::PluginEntry;
 use crate::app::AppMessage;
-use super::{card_frame, elevated_card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, icon_button, chip, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING};
+use crate::ui::MarketplaceState;
+use super::{card_frame, elevated_card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, icon_button, chip, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING, render_empty_state, render_loading_state, render_error_state};
 
-pub fn render_marketplace_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::Mutex<crate::storage::Storage>>, _playit: &crate::playit::PlayitManager, _messages: &mut Vec<AppMessage>) {
-    // Search and filter bar
+pub fn render_marketplace_tab(ui: &mut Ui, marketplace: &mut MarketplaceState, messages: &mut Vec<AppMessage>) {
     ui.horizontal(|ui| {
         ui.add_space(4.0);
         let search_response = ui.add(
-            TextEdit::singleline(&mut String::new())
+            TextEdit::singleline(&mut marketplace.search_query)
                 .hint_text("Search plugins...")
                 .desired_width(300.0)
         );
         if search_response.changed() {
-            // Trigger search
         }
         
         ui.add_space(8.0);
         
+        let mut selected_format = marketplace.selected_format;
         ComboBox::from_label("")
-            .selected_text("All Formats")
+            .selected_text(match selected_format {
+                None => "All Formats",
+                Some(PluginFormat::Wasm) => "WASM (Pumpkin)",
+                Some(PluginFormat::Jar) => "JAR (Steel/Spigot)",
+            })
             .show_ui(ui, |ui| {
-                ui.selectable_value(&mut None, None, "All Formats");
-                ui.selectable_value(&mut Some(PluginFormat::Wasm), Some(PluginFormat::Wasm), "WASM (Pumpkin)");
-                ui.selectable_value(&mut Some(PluginFormat::Jar), Some(PluginFormat::Jar), "JAR (Steel/Spigot)");
+                ui.selectable_value(&mut selected_format, None, "All Formats");
+                ui.selectable_value(&mut selected_format, Some(PluginFormat::Wasm), "WASM (Pumpkin)");
+                ui.selectable_value(&mut selected_format, Some(PluginFormat::Jar), "JAR (Steel/Spigot)");
             });
+        marketplace.selected_format = selected_format;
     });
     ui.add_space(8.0);
 
-    // Categories
     ScrollArea::horizontal().show(ui, |ui| {
         ui.horizontal(|ui| {
             let categories = ["All", "Essentials", "World", "Economy", "Chat", "Admin", "Fun", "Security"];
             for (i, cat) in categories.iter().enumerate() {
-                let selected = i == 0; // placeholder
+                let selected = marketplace.selected_category.as_ref() == Some(&cat.to_string());
                 if chip(ui, cat, selected, PRIMARY).clicked() {
-                    // Filter by category
+                    marketplace.selected_category = Some(cat.to_string());
                 }
                 ui.add_space(8.0);
             }
@@ -44,85 +48,45 @@ pub fn render_marketplace_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync
     });
     ui.add_space(16.0);
 
-    // Plugin grid/list
-    ui.label(RichText::new("Featured Plugins").size(18.0).strong());
+    ui.horizontal(|ui| {
+        ui.label(RichText::new("Available Plugins").size(18.0).strong());
+        ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
+            if marketplace.loading {
+                ui.spinner();
+            } else if outlined_button(ui, "🔄 Refresh").clicked() {
+            }
+        });
+    });
     ui.add_space(8.0);
 
-    // Sample plugin cards
-    let plugins = vec![
-        PluginEntry {
-            name: "EssentialsX".to_string(),
-            version: "2.195.0".to_string(),
-            description: "Essential commands for Minecraft servers (/home, /spawn, /tpa, kits, warps, and more)".to_string(),
-            author: "EssentialsX Team".to_string(),
-            download_url: "https://github.com/EssentialsX/Essentials/releases/download/2.195.0/EssentialsX.jar".to_string(),
-            format: PluginFormat::Wasm,
-            sha256: None,
-        },
-        PluginEntry {
-            name: "WorldGuard".to_string(),
-            version: "7.0.107".to_string(),
-            description: "Region protection plugin - protect your builds, prevent griefing, manage regions".to_string(),
-            author: "Sk89q".to_string(),
-            download_url: "https://github.com/Sk89q/WorldGuard/releases/download/7.0.107/WorldGuard-7.0.107.jar".to_string(),
-            format: PluginFormat::Wasm,
-            sha256: None,
-        },
-        PluginEntry {
-            name: "LuckPerms".to_string(),
-            version: "5.4.105".to_string(),
-            description: "Advanced permissions plugin with web editor, verbose debugging, and flexible inheritance".to_string(),
-            author: "Luck".to_string(),
-            download_url: "https://github.com/LuckPerms/LuckPerms/releases/download/5.4.105/LuckPerms-Bukkit-5.4.105.jar".to_string(),
-            format: PluginFormat::Wasm,
-            sha256: None,
-        },
-        PluginEntry {
-            name: "Vault".to_string(),
-            version: "1.7.3".to_string(),
-            description: "Economy and permissions API for other plugins to hook into".to_string(),
-            author: "MikeTheMoose".to_string(),
-            download_url: "https://github.com/MikeTheMoose/Vault/releases/download/1.7.3/Vault.jar".to_string(),
-            format: PluginFormat::Jar,
-            sha256: None,
-        },
-        PluginEntry {
-            name: "PlaceholderAPI".to_string(),
-            version: "2.3.0".to_string(),
-            description: "Placeholder expansion API - use placeholders in any plugin that supports it".to_string(),
-            author: "PlaceholderAPI".to_string(),
-            download_url: "https://github.com/PlaceholderAPI/PlaceholderAPI/releases/download/2.3.0/PlaceholderAPI.jar".to_string(),
-            format: PluginFormat::Jar,
-            sha256: None,
-        },
-        PluginEntry {
-            name: "CoreProtect".to_string(),
-            version: "21.1".to_string(),
-            description: "Block logging and rollback plugin - investigate griefing, rollback changes".to_string(),
-            author: "Intellivoid".to_string(),
-            download_url: "https://github.com/Intellivoid/CoreProtect/releases/download/v21.1/CoreProtect.jar".to_string(),
-            format: PluginFormat::Jar,
-            sha256: None,
-        },
-    ];
-
-    ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-        for plugin in &plugins {
-            render_plugin_card(ui, plugin);
-        }
-    });
+    if marketplace.loading {
+        render_loading_state(ui, "Loading plugins...");
+    } else if let Some(err) = &marketplace.error {
+        render_error_state(ui, err, Some(|| {}));
+    } else if marketplace.filtered_plugins.is_empty() {
+        render_empty_state(ui, "📦", "No plugins found", "Try adjusting your search or filters", None, None);
+    } else {
+        ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+            for plugin in &marketplace.filtered_plugins {
+                let installing = marketplace.installing.get(&plugin.name).copied().unwrap_or(false);
+                render_plugin_card(ui, plugin, marketplace.server_id.as_deref(), installing, messages);
+            }
+        });
+    }
 }
 
-pub fn render_plugin_card(ui: &mut Ui, plugin: &PluginEntry) {
+pub fn render_plugin_card(ui: &mut Ui, plugin: &PluginEntry, server_id: Option<&str>, installing: bool, messages: &mut Vec<AppMessage>) {
+    let plugin_name = plugin.name.clone();
+    let server_id = server_id.map(|s| s.to_string());
+    
     card_frame().show(ui, |ui| {
         ui.horizontal(|ui| {
-            // Plugin icon
             let format_color = match plugin.format {
                 PluginFormat::Wasm => Color32::from_rgb(100, 180, 255),
                 PluginFormat::Jar => Color32::from_rgb(180, 200, 100),
             };
             
-            let rect = ui.allocate_exact_size(Vec2::splat(56.0), Sense::hover()).rect;
+            let rect = ui.allocate_exact_size(Vec2::splat(56.0), Sense::hover());
             ui.painter().circle_filled(rect.center(), 28.0, format_color.linear_multiply(0.15));
             ui.painter().circle_stroke(rect.center(), 28.0, Stroke::new(2.0, format_color));
             ui.painter().text(
@@ -138,7 +102,6 @@ pub fn render_plugin_card(ui: &mut Ui, plugin: &PluginEntry) {
             
             ui.add_space(12.0);
             
-            // Plugin info
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(&plugin.name).size(16.0).color(ON_SURFACE).strong());
@@ -163,12 +126,18 @@ pub fn render_plugin_card(ui: &mut Ui, plugin: &PluginEntry) {
             
             ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.add_space(8.0);
-                if primary_button(ui, "Install").clicked() {
-                    // Handle install
+                let install_text = if installing { "Installing..." } else { "Install" };
+                if primary_button(ui, install_text).clicked() {
+                    if let Some(sid) = server_id {
+                        messages.push(AppMessage::InstallPlugin { 
+                            server_id: sid, 
+                            plugin_name: plugin_name.clone(), 
+                            plugin_url: plugin.download_url.clone() 
+                        });
+                    }
                 }
                 ui.add_space(8.0);
                 if outlined_button(ui, "Details").clicked() {
-                    // Show details
                 }
             });
         });

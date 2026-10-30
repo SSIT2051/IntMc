@@ -25,7 +25,7 @@ pub struct PluginInfo {
     pub enabled: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PluginFormat {
     Wasm,
     Jar,

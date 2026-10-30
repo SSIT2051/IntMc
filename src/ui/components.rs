@@ -1,4 +1,4 @@
-use eframe::egui::{Color32, Ui, Vec2, Align2, Rounding, Stroke, RichText, FontId, FontFamily, Response, Sense, Layout, Widget, TextStyle};
+use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, Response, Sense, Layout, TextStyle, Rounding};
 use crate::ui::theme::{PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING};
 
 pub fn render_empty_state(ui: &mut Ui, icon: &str, title: &str, subtitle: &str, action_text: Option<&str>, on_action: Option<impl FnOnce()>) {
@@ -73,8 +73,8 @@ pub fn render_section_header(ui: &mut Ui, title: &str, subtitle: Option<&str>, a
 pub fn primary_button(ui: &mut Ui, text: &str) -> Response {
     let btn = egui::Button::new(RichText::new(text).color(Color32::WHITE).size(14.0).strong())
         .fill(PRIMARY)
-        .rounding(Rounding::same(12.0))
-        .min_size(Vec2::new(0.0, 44.0));
+        .min_size(Vec2::new(0.0, 44.0))
+        .text_color(Color32::WHITE);
     ui.add(btn)
 }
 
@@ -82,7 +82,6 @@ pub fn secondary_button(ui: &mut Ui, text: &str) -> Response {
     let btn = egui::Button::new(RichText::new(text).color(PRIMARY).size(14.0))
         .fill(PRIMARY_CONTAINER)
         .stroke(Stroke::new(1.0, PRIMARY))
-        .rounding(Rounding::same(12.0))
         .min_size(Vec2::new(0.0, 44.0));
     ui.add(btn)
 }
@@ -91,7 +90,6 @@ pub fn outlined_button(ui: &mut Ui, text: &str) -> Response {
     let btn = egui::Button::new(RichText::new(text).color(ON_SURFACE_VARIANT).size(14.0))
         .fill(SURFACE_VARIANT)
         .stroke(Stroke::new(1.0, OUTLINE))
-        .rounding(Rounding::same(12.0))
         .min_size(Vec2::new(0.0, 44.0));
     ui.add(btn)
 }
@@ -99,7 +97,6 @@ pub fn outlined_button(ui: &mut Ui, text: &str) -> Response {
 pub fn text_button(ui: &mut Ui, text: &str) -> Response {
     let btn = egui::Button::new(RichText::new(text).color(PRIMARY).size(14.0))
         .fill(Color32::TRANSPARENT)
-        .rounding(Rounding::same(8.0))
         .min_size(Vec2::new(0.0, 36.0));
     ui.add(btn)
 }
@@ -107,8 +104,8 @@ pub fn text_button(ui: &mut Ui, text: &str) -> Response {
 pub fn danger_button(ui: &mut Ui, text: &str) -> Response {
     let btn = egui::Button::new(RichText::new(text).color(Color32::WHITE).size(14.0).strong())
         .fill(ERROR)
-        .rounding(Rounding::same(12.0))
-        .min_size(Vec2::new(0.0, 44.0));
+        .min_size(Vec2::new(0.0, 44.0))
+        .text_color(Color32::WHITE);
     ui.add(btn)
 }
 
@@ -120,7 +117,6 @@ pub fn icon_button(ui: &mut Ui, text: &str, selected: bool) -> Response {
     };
     let btn = egui::Button::new(RichText::new(text).color(text_color).size(22.0))
         .fill(fill)
-        .rounding(Rounding::same(12.0))
         .min_size(Vec2::new(48.0, 48.0));
     ui.add(btn)
 }
@@ -133,7 +129,6 @@ pub fn chip(ui: &mut Ui, text: &str, selected: bool, color: Color32) -> Response
     };
     let btn = egui::Button::new(RichText::new(text).color(text_color).size(12.0).strong())
         .fill(fill)
-        .rounding(Rounding::same(16.0))
         .min_size(Vec2::new(0.0, 32.0));
     ui.add(btn)
 }
@@ -169,12 +164,11 @@ pub fn status_indicator(ui: &mut Ui, running: bool) -> Response {
         (ERROR, "Stopped")
     };
     
-    ui.horizontal(|ui| {
-        let rect = ui.allocate_exact_size(Vec2::splat(8.0), Sense::hover()).rect;
-        ui.painter().circle_filled(rect.center(), 4.0, color);
-        ui.add_space(6.0);
-        ui.label(RichText::new(text).size(12.0).color(color).strong());
-    }).response
+    let (rect, response) = ui.allocate_exact_size(Vec2::splat(8.0), Sense::hover());
+    ui.painter().circle_filled(rect.center(), 4.0, color);
+    ui.add_space(6.0);
+    ui.label(RichText::new(text).size(12.0).color(color).strong());
+    response
 }
 
 pub fn backend_badge(ui: &mut Ui, backend: &str) {
@@ -199,23 +193,19 @@ pub fn format_badge(ui: &mut Ui, format: &crate::storage::PluginFormat) {
         crate::storage::PluginFormat::Jar => (Color32::from_rgb(180, 200, 100), "JAR"),
     };
     
-    ui.horizontal(|ui| {
-        let rect = ui.allocate_exact_size(Vec2::new(44.0, 20.0), Sense::hover()).rect;
-        ui.painter().rect_filled(rect, Rounding::same(4.0), color.linear_multiply(0.15));
-        ui.painter().rect_stroke(rect, Rounding::same(4.0), Stroke::new(1.0, color));
-        ui.painter().text(rect.center(), Align2::CENTER_CENTER, 
-            RichText::new(text).size(9.0).color(color).strong());
-    });
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(44.0, 20.0), Sense::hover());
+    ui.painter().rect_filled(rect, 4.0, color.linear_multiply(0.15));
+    ui.painter().rect_stroke(rect, 4.0, Stroke::new(1.0, color), egui::epaint::StrokeKind::Continuous);
+    ui.painter().text(rect.center(), Align2::CENTER_CENTER, 
+        RichText::new(text).size(9.0).color(color).strong(), FontId::default(), color);
 }
 
 pub fn version_badge(ui: &mut Ui, version: &str) {
-    ui.horizontal(|ui| {
-        let rect = ui.allocate_exact_size(Vec2::new(60.0, 20.0), Sense::hover()).rect;
-        ui.painter().rect_filled(rect, Rounding::same(4.0), PRIMARY_CONTAINER);
-        ui.painter().rect_stroke(rect, Rounding::same(4.0), Stroke::new(1.0, PRIMARY));
-        ui.painter().text(rect.center(), Align2::CENTER_CENTER, 
-            RichText::new(version).size(9.0).color(PRIMARY).strong());
-    });
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(60.0, 20.0), Sense::hover());
+    ui.painter().rect_filled(rect, 4.0, PRIMARY_CONTAINER);
+    ui.painter().rect_stroke(rect, 4.0, Stroke::new(1.0, PRIMARY), egui::epaint::StrokeKind::Continuous);
+    ui.painter().text(rect.center(), Align2::CENTER_CENTER, 
+        RichText::new(version).size(9.0).color(PRIMARY).strong(), FontId::default(), PRIMARY);
 }
 
 pub fn port_badge(ui: &mut Ui, port: u16) {
@@ -273,7 +263,7 @@ pub fn input_dialog(ui: &mut Ui, title: &str, label: &str, value: &mut String, p
                 ui.add_space(8.0);
                 ui.label(RichText::new(label).size(14.0).color(ON_SURFACE));
                 ui.add_space(8.0);
-                ui.add(TextEdit::singleline(value).hint_text(placeholder).desired_width(f32::INFINITY));
+                ui.add(egui::TextEdit::singleline(value).hint_text(placeholder).desired_width(f32::INFINITY));
                 ui.add_space(24.0);
                 ui.horizontal(|ui| {
                     if secondary_button(ui, "Cancel").clicked() {

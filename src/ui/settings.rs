@@ -1,10 +1,9 @@
-use eframe::egui::{Color32, Ui, Vec2, Align2, Rounding, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextStyle, TextEdit, ComboBox};
+use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextStyle, TextEdit, ComboBox};
 use crate::app::AppMessage;
-use super::{card_frame, elevated_card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, icon_button, chip, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING};
+use super::{card_frame, elevated_card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, icon_button, chip, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING, render_section_header};
 
 pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::Mutex<crate::storage::Storage>>, _playit: &crate::playit::PlayitManager, _messages: &mut Vec<AppMessage>) {
     ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-        // Playit.gg section
         render_section_header(ui, "🌐", "Playit.gg Tunnel");
         card_frame().show(ui, |ui| {
             ui.horizontal(|ui| {
@@ -15,7 +14,6 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
                 });
                 ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
                     if outlined_button(ui, "Sign In").clicked() {
-                        // Open sign in
                     }
                 });
             });
@@ -38,14 +36,12 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
             ui.horizontal(|ui| {
                 ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
                     if primary_button(ui, "Save & Connect").clicked() {
-                        // Save credentials
                     }
                 });
             });
         });
         ui.add_space(16.0);
 
-        // Appearance section
         render_section_header(ui, "🎨", "Appearance");
         card_frame().show(ui, |ui| {
             ui.horizontal(|ui| {
@@ -62,7 +58,6 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
         });
         ui.add_space(16.0);
 
-        // Notifications section
         render_section_header(ui, "🔔", "Notifications");
         card_frame().show(ui, |ui| {
             let mut notifications = true;
@@ -100,7 +95,6 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
         });
         ui.add_space(16.0);
 
-        // Storage section
         render_section_header(ui, "💾", "Storage");
         card_frame().show(ui, |ui| {
             ui.horizontal(|ui| {
@@ -125,18 +119,15 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
             ui.horizontal(|ui| {
                 ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
                     if outlined_button(ui, "Open Folder").clicked() {
-                        // Open folder
                     }
                     ui.add_space(8.0);
                     if primary_button(ui, "Backup Data").clicked() {
-                        // Backup
                     }
                 });
             });
         });
         ui.add_space(16.0);
 
-        // Advanced section
         render_section_header(ui, "⚙", "Advanced");
         card_frame().show(ui, |ui| {
             let mut advanced = false;
@@ -178,7 +169,6 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
         });
         ui.add_space(16.0);
 
-        // About section
         render_section_header(ui, "ℹ", "About");
         card_frame().show(ui, |ui| {
             ui.vertical_centered(|ui| {
@@ -192,15 +182,12 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
                 ui.add_space(16.0);
                 ui.horizontal(|ui| {
                     if text_button(ui, "GitHub").clicked() {
-                        // Open GitHub
                     }
                     ui.add_space(12.0);
                     if text_button(ui, "Report Issue").clicked() {
-                        // Open issues
                     }
                     ui.add_space(12.0);
                     if text_button(ui, "License").clicked() {
-                        // Show license
                     }
                 });
             });

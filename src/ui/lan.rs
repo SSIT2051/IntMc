@@ -1,12 +1,11 @@
-use eframe::egui::{Color32, Ui, Vec2, Align2, Rounding, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextStyle, TextEdit};
+use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextStyle};
 use crate::lan::LanServer;
 use crate::app::AppMessage;
 use super::{card_frame, elevated_card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, icon_button, chip, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING};
 
 pub fn render_lan_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::Mutex<crate::storage::Storage>>, _playit: &crate::playit::PlayitManager, messages: &mut Vec<AppMessage>) {
-    // Header with discover button
     ui.horizontal(|ui| {
-        ui.strong(RichText::new("Local Network").size(20.0));
+        ui.label(RichText::new("Local Network").size(20.0).strong());
         ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
             if primary_button(ui, "🔍 Discover").clicked() {
                 messages.push(AppMessage::DiscoverLan);
@@ -15,7 +14,6 @@ pub fn render_lan_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::Mutex<
     });
     ui.add_space(8.0);
 
-    // Announce section
     card_frame().show(ui, |ui| {
         ui.strong("Announce This Server");
         ui.add_space(8.0);
@@ -36,20 +34,17 @@ pub fn render_lan_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::Mutex<
             ui.checkbox(&mut enabled, "Announce on LAN");
             ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
                 if primary_button(ui, "Start Announcing").clicked() {
-                    // Start LAN announcement
                 }
             });
         });
     });
     ui.add_space(16.0);
 
-    // Discovered servers
     ui.horizontal(|ui| {
         ui.strong(RichText::new("Discovered Servers").size(18.0));
     });
     ui.add_space(8.0);
 
-    // Sample discovered servers
     let discovered = vec![
         LanServer {
             name: "Survival World".to_string(),
@@ -94,8 +89,7 @@ pub fn render_lan_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::Mutex<
 pub fn render_lan_server_card(ui: &mut Ui, server: &LanServer, messages: &mut Vec<AppMessage>) {
     card_frame().show(ui, |ui| {
         ui.horizontal(|ui| {
-            // Server icon
-            let rect = ui.allocate_exact_size(Vec2::splat(56.0), Sense::hover()).rect;
+            let rect = ui.allocate_exact_size(Vec2::splat(56.0), Sense::hover());
             ui.painter().circle_filled(rect.center(), 28.0, PRIMARY.linear_multiply(0.15));
             ui.painter().circle_stroke(rect.center(), 28.0, Stroke::new(2.0, PRIMARY));
             ui.painter().text(
@@ -108,7 +102,6 @@ pub fn render_lan_server_card(ui: &mut Ui, server: &LanServer, messages: &mut Ve
             
             ui.add_space(12.0);
             
-            // Server info
             ui.vertical(|ui| {
                 ui.label(RichText::new(&server.name).size(16.0).color(ON_SURFACE).strong());
                 ui.add_space(2.0);
