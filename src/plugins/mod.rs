@@ -2,6 +2,7 @@ use md5;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use thiserror::Error;
+use crate::storage::PluginFormat;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginEntry {
@@ -12,12 +13,6 @@ pub struct PluginEntry {
     pub download_url: String,
     pub format: PluginFormat,
     pub sha256: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum PluginFormat {
-    Wasm,
-    Jar,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,4 +1,4 @@
-use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, Response, Sense, Layout, TextStyle, Rounding};
+use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, Response, Sense, Layout, TextStyle, CornerRadius, epaint::StrokeKind};
 use crate::ui::theme::{PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING};
 
 pub fn render_empty_state(ui: &mut Ui, icon: &str, title: &str, subtitle: &str, action_text: Option<&str>, on_action: Option<impl FnOnce()>) {
@@ -70,11 +70,19 @@ pub fn render_section_header(ui: &mut Ui, title: &str, subtitle: Option<&str>, a
     ui.add_space(8.0);
 }
 
+/// Simple section header with icon and title (legacy compatibility)
+pub fn render_section_header_simple(ui: &mut Ui, icon: &str, title: &str) {
+    ui.horizontal(|ui| {
+        ui.label(RichText::new(icon).size(20.0));
+        ui.label(RichText::new(title).size(18.0).strong().color(ON_SURFACE));
+    });
+    ui.add_space(8.0);
+}
+
 pub fn primary_button(ui: &mut Ui, text: &str) -> Response {
     let btn = egui::Button::new(RichText::new(text).color(Color32::WHITE).size(14.0).strong())
         .fill(PRIMARY)
-        .min_size(Vec2::new(0.0, 44.0))
-        .text_color(Color32::WHITE);
+        .min_size(Vec2::new(0.0, 44.0));
     ui.add(btn)
 }
 
@@ -104,8 +112,7 @@ pub fn text_button(ui: &mut Ui, text: &str) -> Response {
 pub fn danger_button(ui: &mut Ui, text: &str) -> Response {
     let btn = egui::Button::new(RichText::new(text).color(Color32::WHITE).size(14.0).strong())
         .fill(ERROR)
-        .min_size(Vec2::new(0.0, 44.0))
-        .text_color(Color32::WHITE);
+        .min_size(Vec2::new(0.0, 44.0));
     ui.add(btn)
 }
 
@@ -137,10 +144,12 @@ pub fn card_frame() -> egui::Frame {
     egui::Frame::default()
         .fill(Color32::from_rgb(32, 32, 35))
         .stroke(Stroke::new(1.0, OUTLINE))
-        .rounding(Rounding::same(16.0))
+        .corner_radius(CornerRadius::same(16.0))
         .inner_margin(egui::Margin::symmetric(16.0, 14.0))
         .shadow(egui::epaint::Shadow {
-            extrusion: 4.0,
+            offset: [0.0, 2.0],
+            blur: 4.0,
+            spread: 0.0,
             color: Color32::from_rgba_premultiplied(0, 0, 0, 80),
         })
 }
@@ -149,10 +158,12 @@ pub fn elevated_card_frame() -> egui::Frame {
     egui::Frame::default()
         .fill(Color32::from_rgb(28, 28, 30))
         .stroke(Stroke::new(1.0, OUTLINE))
-        .rounding(Rounding::same(16.0))
+        .corner_radius(CornerRadius::same(16.0))
         .inner_margin(egui::Margin::symmetric(16.0, 14.0))
         .shadow(egui::epaint::Shadow {
-            extrusion: 8.0,
+            offset: [0.0, 4.0],
+            blur: 8.0,
+            spread: 0.0,
             color: Color32::from_rgba_premultiplied(0, 0, 0, 100),
         })
 }
@@ -165,7 +176,7 @@ pub fn status_indicator(ui: &mut Ui, running: bool) -> Response {
     };
     
     let (rect, response) = ui.allocate_exact_size(Vec2::splat(8.0), Sense::hover());
-    ui.painter().circle_filled(rect.center(), 4.0, color);
+    ui.painter().circle_filled(rect.0.center(), 4.0, color);
     ui.add_space(6.0);
     ui.label(RichText::new(text).size(12.0).color(color).strong());
     response
@@ -194,18 +205,20 @@ pub fn format_badge(ui: &mut Ui, format: &crate::storage::PluginFormat) {
     };
     
     let (rect, response) = ui.allocate_exact_size(Vec2::new(44.0, 20.0), Sense::hover());
+    let rect = rect.0;
     ui.painter().rect_filled(rect, 4.0, color.linear_multiply(0.15));
-    ui.painter().rect_stroke(rect, 4.0, Stroke::new(1.0, color), egui::epaint::StrokeKind::Continuous);
+    ui.painter().rect_stroke(rect, 4.0, Stroke::new(1.0, color), StrokeKind::Solid);
     ui.painter().text(rect.center(), Align2::CENTER_CENTER, 
-        RichText::new(text).size(9.0).color(color).strong(), FontId::default(), color);
+        text.to_string(), FontId::new(9.0, FontFamily::Proportional), color);
 }
 
 pub fn version_badge(ui: &mut Ui, version: &str) {
     let (rect, response) = ui.allocate_exact_size(Vec2::new(60.0, 20.0), Sense::hover());
+    let rect = rect.0;
     ui.painter().rect_filled(rect, 4.0, PRIMARY_CONTAINER);
-    ui.painter().rect_stroke(rect, 4.0, Stroke::new(1.0, PRIMARY), egui::epaint::StrokeKind::Continuous);
-    ui.painter().text(rect.center(), Align2::CENTER_CENTER, 
-        RichText::new(version).size(9.0).color(PRIMARY).strong(), FontId::default(), PRIMARY);
+    ui.painter().rect_stroke(rect, 4.0, Stroke::new(1.0, PRIMARY), StrokeKind::Solid);
+    ui.painter().text(rect.center(), Align2::CENTER_CENTER,
+        version.to_string(), FontId::default(), PRIMARY);
 }
 
 pub fn port_badge(ui: &mut Ui, port: u16) {

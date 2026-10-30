@@ -1,4 +1,4 @@
-use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextStyle};
+use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextStyle, epaint::StrokeKind};
 use crate::lan::LanServer;
 use crate::app::AppMessage;
 use super::{card_frame, elevated_card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, icon_button, chip, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING};
@@ -90,10 +90,12 @@ pub fn render_lan_server_card(ui: &mut Ui, server: &LanServer, messages: &mut Ve
     card_frame().show(ui, |ui| {
         ui.horizontal(|ui| {
             let rect = ui.allocate_exact_size(Vec2::splat(56.0), Sense::hover());
-            ui.painter().circle_filled(rect.center(), 28.0, PRIMARY.linear_multiply(0.15));
-            ui.painter().circle_stroke(rect.center(), 28.0, Stroke::new(2.0, PRIMARY));
+            let rect = rect.0;
+            let center = rect.center();
+            ui.painter().circle_filled(center, 28.0, PRIMARY.linear_multiply(0.15));
+            ui.painter().circle_stroke(center, 28.0, Stroke::new(2.0, PRIMARY));
             ui.painter().text(
-                rect.center(),
+                center,
                 Align2::CENTER_CENTER,
                 "📡",
                 FontId::new(24.0, FontFamily::Proportional),

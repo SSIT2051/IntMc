@@ -1,4 +1,4 @@
-use eframe::egui::{Color32, Ui, Vec2, Align2, Rounding, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextStyle, TextEdit};
+use eframe::egui::{Color32, Ui, Vec2, Align2, CornerRadius, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextStyle, TextEdit, epaint::StrokeKind};
 use crate::storage::ServerMetadata;
 use crate::app::AppMessage;
 use crate::server::ServerBackendType;
@@ -58,10 +58,11 @@ pub fn render_server_card(ui: &mut Ui, server: &ServerMetadata, messages: &mut V
             };
             
             let rect = ui.allocate_exact_size(Vec2::splat(56.0), Sense::hover());
-            ui.painter().circle_filled(rect.center(), 28.0, backend_color.linear_multiply(0.15));
-            ui.painter().circle_stroke(rect.center(), 28.0, Stroke::new(2.0, backend_color));
+            let center = rect.center();
+            ui.painter().circle_filled(center, 28.0, backend_color.linear_multiply(0.15));
+            ui.painter().circle_stroke(center, 28.0, Stroke::new(2.0, backend_color));
             ui.painter().text(
-                rect.center(),
+                center,
                 Align2::CENTER_CENTER,
                 match server.backend.as_str() {
                     "Pumpkin" => "🎃",
@@ -135,8 +136,9 @@ pub fn render_server_card(ui: &mut Ui, server: &ServerMetadata, messages: &mut V
 
 fn version_badge(ui: &mut Ui, version: &str) {
     let (rect, response) = ui.allocate_exact_size(Vec2::new(60.0, 20.0), Sense::hover());
+    let rect = rect.0;
     ui.painter().rect_filled(rect, 4.0, PRIMARY_CONTAINER);
-    ui.painter().rect_stroke(rect, 4.0, Stroke::new(1.0, PRIMARY), egui::epaint::StrokeKind::Continuous);
+    ui.painter().rect_stroke(rect, 4.0, Stroke::new(1.0, PRIMARY), StrokeKind::Solid);
     ui.painter().text(rect.center(), Align2::CENTER_CENTER, 
-        RichText::new(version).size(9.0).color(PRIMARY).strong(), FontId::default(), PRIMARY);
+        version.to_string(), FontId::default(), PRIMARY);
 }

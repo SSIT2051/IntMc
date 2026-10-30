@@ -1,10 +1,10 @@
 use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextStyle, TextEdit, ComboBox};
 use crate::app::AppMessage;
-use super::{card_frame, elevated_card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, icon_button, chip, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING, render_section_header};
+use super::{card_frame, elevated_card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, icon_button, chip, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING, render_section_header_simple};
 
 pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::Mutex<crate::storage::Storage>>, _playit: &crate::playit::PlayitManager, _messages: &mut Vec<AppMessage>) {
     ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-        render_section_header(ui, "🌐", "Playit.gg Tunnel");
+        render_section_header_simple(ui, "🌐", "Playit.gg Tunnel");
         card_frame().show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.vertical(|ui| {
@@ -42,7 +42,7 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
         });
         ui.add_space(16.0);
 
-        render_section_header(ui, "🎨", "Appearance");
+        render_section_header_simple(ui, "🎨", "Appearance");
         card_frame().show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.vertical(|ui| {
@@ -52,13 +52,13 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
                 });
                 ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
                     let mut dark = true;
-                    ui.add(egui::widgets::Switch::new(&mut dark));
+                    ui.checkbox(&mut dark, "");
                 });
             });
         });
         ui.add_space(16.0);
 
-        render_section_header(ui, "🔔", "Notifications");
+        render_section_header_simple(ui, "🔔", "Notifications");
         card_frame().show(ui, |ui| {
             let mut notifications = true;
             ui.horizontal(|ui| {
@@ -68,7 +68,7 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
                     ui.label(RichText::new("Receive alerts for server events").size(13.0).color(ON_SURFACE_VARIANT));
                 });
                 ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.add(egui::widgets::Switch::new(&mut notifications));
+                    ui.checkbox(&mut notifications, "");
                 });
             });
             ui.add_space(12.0);
@@ -83,7 +83,7 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
                     ui.label(RichText::new("Automatically refresh server status").size(13.0).color(ON_SURFACE_VARIANT));
                 });
                 ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.add(egui::widgets::Switch::new(&mut auto_refresh));
+                    ui.checkbox(&mut auto_refresh, "");
                 });
             });
             ui.add_space(12.0);
@@ -95,7 +95,7 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
         });
         ui.add_space(16.0);
 
-        render_section_header(ui, "💾", "Storage");
+        render_section_header_simple(ui, "💾", "Storage");
         card_frame().show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.vertical(|ui| {
@@ -128,7 +128,7 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
         });
         ui.add_space(16.0);
 
-        render_section_header(ui, "⚙", "Advanced");
+        render_section_header_simple(ui, "⚙", "Advanced");
         card_frame().show(ui, |ui| {
             let mut advanced = false;
             ui.horizontal(|ui| {
@@ -138,7 +138,7 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
                     ui.label(RichText::new("Enable developer options and debug features").size(13.0).color(ON_SURFACE_VARIANT));
                 });
                 ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.add(egui::widgets::Switch::new(&mut advanced));
+                    ui.checkbox(&mut advanced, "");
                 });
             });
             
@@ -156,20 +156,21 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
                 ui.horizontal(|ui| {
                     ui.label(RichText::new("Log Level").size(14.0).color(ON_SURFACE));
                     ui.add_space(12.0);
+                    let mut log_level = "info";
                     ComboBox::from_label("")
-                        .selected_text("Info")
+                        .selected_text(log_level)
                         .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut "info", "info", "Debug");
-                            ui.selectable_value(&mut "info", "info", "Info");
-                            ui.selectable_value(&mut "warn", "warn", "Warning");
-                            ui.selectable_value(&mut "error", "error", "Error");
+                            ui.selectable_value(&mut log_level, "debug", "Debug");
+                            ui.selectable_value(&mut log_level, "info", "Info");
+                            ui.selectable_value(&mut log_level, "warn", "Warning");
+                            ui.selectable_value(&mut log_level, "error", "Error");
                         });
                 });
             }
         });
         ui.add_space(16.0);
 
-        render_section_header(ui, "ℹ", "About");
+        render_section_header_simple(ui, "ℹ", "About");
         card_frame().show(ui, |ui| {
             ui.vertical_centered(|ui| {
                 ui.label(RichText::new("intmc").size(24.0).color(PRIMARY).strong());
@@ -194,12 +195,4 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
         });
         ui.add_space(32.0);
     });
-}
-
-fn render_section_header(ui: &mut Ui, icon: &str, title: &str) {
-    ui.horizontal(|ui| {
-        ui.label(RichText::new(icon).size(20.0));
-        ui.label(RichText::new(title).size(18.0).strong().color(ON_SURFACE));
-    });
-    ui.add_space(8.0);
 }

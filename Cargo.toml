@@ -1,7 +1,7 @@
 [package]
 name = "intmc"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [lib]
 name = "intmc"
@@ -52,11 +52,17 @@ toml = "0.8"
 # Process management (server spawning)
 thiserror = "1"
 
+# Synchronization primitives for blocking locks in sync contexts
+parking_lot = "0.12"
+
 # Hash verification
 md5 = "0.2"
 
 # UUID generation
 uuid = { version = "1", features = ["v4"] }
+
+# Date/time formatting
+chrono = { version = "0.4", features = ["serde"] }
 
 # OpenSSL for Android cross-compilation (vendored to build from source)
 openssl-sys = { version = "0.9", features = ["vendored"] }

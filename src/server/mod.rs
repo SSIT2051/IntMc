@@ -121,7 +121,7 @@ pub mod pumpkin {
         }
         fn stop(&self, process: &ServerProcess) -> Result<(), ServerError> {
             let mut child = process.blocking_lock();
-            child.kill().map_err(|e| ServerError::StopFailed(e.to_string()))
+            child.kill().await.map_err(|e| ServerError::StopFailed(e.to_string()))
         }
         fn is_running(&self, process: &ServerProcess) -> bool {
             let mut child = process.blocking_lock();
@@ -212,7 +212,7 @@ pub mod rosewater {
         }
         fn stop(&self, process: &ServerProcess) -> Result<(), ServerError> {
             let mut child = process.blocking_lock();
-            child.kill().map_err(|e| ServerError::StopFailed(e.to_string()))
+            child.kill().await.map_err(|e| ServerError::StopFailed(e.to_string()))
         }
         fn is_running(&self, process: &ServerProcess) -> bool {
             let mut child = process.blocking_lock();
@@ -256,7 +256,7 @@ pub mod glowstone {
         }
         fn stop(&self, process: &ServerProcess) -> Result<(), ServerError> {
             let mut child = process.blocking_lock();
-            child.kill().map_err(|e| ServerError::StopFailed(e.to_string()))
+            child.kill().await.map_err(|e| ServerError::StopFailed(e.to_string()))
         }
         fn is_running(&self, process: &ServerProcess) -> bool {
             let mut child = process.blocking_lock();

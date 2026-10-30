@@ -1,23 +1,24 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::process::Child;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncBufReadExt;
+use parking_lot::Mutex as ParkingLotMutex;
+use tar::Builder;
 
-use crate::storage::{Storage, ServerMetadata, PluginInfo, PluginFormat};
-use crate::ui::{IntmcUI, Tab, ServerDetailTab, CreateServerState, CreateServerStep, MarketplaceState, LanState, SettingsState, ServerDetailState};
+use crate::storage::{Storage, ServerMetadata};
+use crate::ui::{IntmcUI, ServerDetailTab, ServerDetailState};
 use crate::playit::PlayitManager;
 use crate::lan::LanDiscovery;
 use crate::server::{ServerConfig, ServerBackendType, get_backend, ServerProcess, ServerBackend};
-use crate::plugins::{PluginMarketplace, PluginEntry};
-use log::{info, warn, error};
-use eframe::egui::{Context, Ui, FontDefinitions, FontFamily, FontData, Vec2, Align2, Color32, Rounding, Stroke, RichText, FontId, ScrollArea, Layout, Sense, TextStyle, DragValue, TextEdit};
+use crate::plugins::PluginMarketplace;
+use log::{info, warn};
+use eframe::egui::{Context, Ui, FontDefinitions, FontFamily, FontData, Vec2, Align2, Color32, CornerRadius, Stroke, RichText, FontId, ScrollArea, Layout, Sense, TextStyle, DragValue, TextEdit};
 use eframe::Frame;
-use crate::ui::theme::{setup_material3_theme, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING, card_frame, elevated_card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, icon_button, chip, status_chip, ServerStatus};
-use crate::ui::components::*;
+use crate::ui::theme::{setup_material3_theme, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING, ServerStatus};
+use crate::ui::components::{card_frame, elevated_card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, icon_button, chip, format_badge, version_badge, render_empty_state, render_loading_state, render_error_state, render_section_header, render_section_header_simple};
 use crate::ui::logs::{LogViewer, render_log_viewer};
-use crate::ui::resources::{ResourceMonitor, ResourceMetrics, render_resources_tab, collect_system_metrics};
+use crate::ui::resources::{ResourceMonitor, render_resources_tab, collect_system_metrics};
 use crate::ui::file_browser::{render_file_browser, render_file_viewer, FileEntry};
 use crate::ui::create_server::{render_create_server_dialog, CreateServerData};
 
@@ -59,8 +60,8 @@ pub struct IntmcApp {
     storage: Arc<Mutex<Storage>>,
     running_servers: Arc<Mutex<HashMap<String, ServerProcess>>>,
     plugin_marketplace: PluginMarketplace,
-    resource_monitors: Arc<Mutex<HashMap<String, ResourceMonitor>>>,
-    log_viewers: Arc<Mutex<HashMap<String, LogViewer>>>,
+    resource_monitors: Arc<ParkingLotMutex<HashMap<String, ResourceMonitor>>>,
+    log_viewers: Arc<ParkingLotMutex<HashMap<String, LogViewer>>>,
     error_message: Option<String>,
     status_message: Option<String>,
     lan_servers: Vec<crate::lan::LanServer>,
@@ -109,8 +110,8 @@ impl IntmcApp {
         
         let storage_arc = Arc::new(Mutex::new(storage));
         let running_servers = Arc::new(Mutex::new(HashMap::new()));
-        let resource_monitors = Arc::new(Mutex::new(HashMap::new()));
-        let log_viewers = Arc::new(Mutex::new(HashMap::new()));
+        let resource_monitors = Arc::new(ParkingLotMutex::new(HashMap::new()));
+        let log_viewers = Arc::new(ParkingLotMutex::new(HashMap::new()));
         let ui = IntmcUI::new();
         
         Self {
@@ -164,7 +165,7 @@ impl IntmcApp {
     }
 
     /// Process UI messages synchronously (called from egui ui callback)
-    pub fn process_messages(&mut self, messages: Vec<AppMessage>, ctx: &Context) {
+    pub fn process_messages(&mut self, messages: Vec<AppMessage>, _ctx: &Context) {
         for msg in messages {
             match msg {
                 AppMessage::ShowCreateServerDialog => {
@@ -275,7 +276,7 @@ impl IntmcApp {
                         }
                     }
                 }
-                AppMessage::ViewFile { server_id, path } => {
+                AppMessage::ViewFile { server_id: _, path } => {
                     // File viewing handled in UI
                     self.status_message = Some(format!("Viewing {}", path.display()));
                 }
@@ -394,7 +395,7 @@ impl IntmcApp {
         runtime.block_on(self.remove_tunnel(server_id))
     }
 
-    fn save_file_sync(&self, server_id: &str, path: &PathBuf, content: &str) -> Result<(), String> {
+    fn save_file_sync(&self, _server_id: &str, path: &PathBuf, content: &str) -> Result<(), String> {
         std::fs::write(path, content).map_err(|e| format!("Failed to write file: {}", e))
     }
 
@@ -525,8 +526,9 @@ impl IntmcApp {
         // Kill the process
         {
             let mut running = self.running_servers.lock().await;
-            if let Some(mut child) = running.remove(server_id) {
-                child.kill().map_err(|e| format!("Failed to kill process: {}", e))?;
+            if let Some(child_arc) = running.remove(server_id) {
+                let mut child = child_arc.lock().await;
+                child.kill().await.map_err(|e| format!("Failed to kill process: {}", e))?;
             }
         }
         
@@ -547,12 +549,13 @@ impl IntmcApp {
         // Kill process if running
         {
             let mut running = self.running_servers.lock().await;
-            if let Some(mut child) = running.remove(server_id) {
-                let _ = child.kill();
+            if let Some(child_arc) = running.remove(server_id) {
+                let mut child = child_arc.lock().await;
+                let _ = child.kill().await;
             }
         }
         
-        let storage = self.storage.lock().await;
+        let storage = self.storage.lock();
         storage.delete_server(server_id)
             .map_err(|e| format!("Failed to delete server: {}", e))?;
         
@@ -567,7 +570,7 @@ impl IntmcApp {
     }
 
     pub async fn refresh_servers(&mut self) -> Vec<ServerMetadata> {
-        let storage = self.storage.lock().await;
+        let storage = self.storage.lock();
         storage.get_all_servers().unwrap_or_default()
     }
 
@@ -588,7 +591,7 @@ impl IntmcApp {
 
     // New async methods for additional functionality
     pub async fn install_plugin(&self, server_id: &str, plugin_name: &str, plugin_url: &str) -> Result<(), String> {
-        let storage = self.storage.lock().await;
+        let storage = self.storage.lock();
         let servers = storage.get_all_servers()
             .map_err(|e| format!("Failed to get servers: {}", e))?;
         
@@ -645,7 +648,7 @@ impl IntmcApp {
     }
 
     pub async fn uninstall_plugin(&self, server_id: &str, plugin_name: &str) -> Result<(), String> {
-        let storage = self.storage.lock().await;
+        let storage = self.storage.lock();
         // Note: We'd need a delete_plugin method in storage
         // For now, just remove the file
         let servers = storage.get_all_servers()
@@ -666,7 +669,7 @@ impl IntmcApp {
     }
 
     pub async fn toggle_plugin(&self, server_id: &str, plugin_name: &str) -> Result<(), String> {
-        let storage = self.storage.lock().await;
+        let storage = self.storage.lock();
         let plugins = storage.get_plugins(server_id)
             .map_err(|e| format!("Failed to get plugins: {}", e))?;
         
@@ -684,7 +687,7 @@ impl IntmcApp {
         match self.playit.create_tunnel(server_id, port).await {
             Ok(tunnel) => {
                 // Update server with tunnel info
-                let storage = self.storage.lock().await;
+                let storage = self.storage.lock();
                 storage.update_server_ip(server_id, &tunnel.public_url)
                     .map_err(|e| format!("Failed to update server IP: {}", e))?;
                 Ok(())
@@ -742,7 +745,7 @@ impl IntmcApp {
                             match reader.read_line(&mut line).await {
                                 Ok(0) => break, // EOF
                                 Ok(_) => {
-                                    let mut viewers = log_viewers.lock().await;
+                                    let mut viewers = log_viewers.lock();
                                     if let Some(viewer) = viewers.get_mut(&server_id) {
                                         viewer.add_log(line.trim_end().to_string());
                                     }
@@ -765,7 +768,7 @@ impl IntmcApp {
                             match reader.read_line(&mut line).await {
                                 Ok(0) => break, // EOF
                                 Ok(_) => {
-                                    let mut viewers = log_viewers.lock().await;
+                                    let mut viewers = log_viewers.lock();
                                     if let Some(viewer) = viewers.get_mut(&server_id) {
                                         viewer.add_log(format!("[STDERR] {}", line.trim_end()));
                                     }
@@ -796,7 +799,7 @@ impl IntmcApp {
             is_running: false,
         };
         
-        let storage = self.storage.lock().await;
+        let storage = self.storage.lock();
         storage.insert_server(&metadata)
             .map_err(|e| format!("Failed to update server: {}", e))?;
         
@@ -804,7 +807,7 @@ impl IntmcApp {
     }
 
 pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
-        let storage = self.storage.lock().await;
+        let storage = self.storage.lock();
         let servers = storage.get_all_servers()
             .map_err(|e| format!("Failed to get servers: {}", e))?;
         
@@ -824,14 +827,13 @@ pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
         let backup_name = format!("{}_{}.tar.gz", server.name, timestamp);
         let backup_path = backup_dir.join(&backup_name);
         
-        // Create tar.gz archive using pure Rust (flate2 + tar)
+        // Create tar.gz archive using pure Rust (flate2 + tar) - synchronous I/O
         use flate2::write::GzEncoder;
         use flate2::Compression;
         use tar::Builder;
-        use tokio::fs::File;
-        use tokio::io::AsyncWriteExt;
+        use std::fs::File;
         
-        let file = File::create(&backup_path).await
+        let file = File::create(&backup_path)
             .map_err(|e| format!("Failed to create backup file: {}", e))?;
         let encoder = GzEncoder::new(file, Compression::default());
         let mut builder = Builder::new(encoder);
@@ -874,7 +876,7 @@ pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
     }
 
     pub async fn restore_server(&self, server_id: &str, backup_path: &PathBuf) -> Result<(), String> {
-        let storage = self.storage.lock().await;
+        let storage = self.storage.lock();
         let servers = storage.get_all_servers()
             .map_err(|e| format!("Failed to get servers: {}", e))?;
         
@@ -885,12 +887,12 @@ pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
         // Stop server if running
         let _ = self.stop_server(server_id).await;
         
-        // Extract backup using pure Rust (flate2 + tar)
+        // Extract backup using pure Rust (flate2 + tar) - synchronous I/O
         use flate2::read::GzDecoder;
         use tar::Archive;
-        use tokio::fs::File;
+        use std::fs::File;
         
-        let file = File::open(backup_path).await
+        let file = File::open(backup_path)
             .map_err(|e| format!("Failed to open backup file: {}", e))?;
         let decoder = GzDecoder::new(file);
         let mut archive = Archive::new(decoder);
@@ -954,7 +956,7 @@ pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
                     ServerDetailTab::Console => self.render_console_tab(ui, server, detail, messages),
                     ServerDetailTab::Files => self.render_files_tab(ui, server, detail, messages),
                     ServerDetailTab::Plugins => self.render_plugins_tab(ui, server, detail, messages),
-                    ServerDetailTab::Resources => self.render_resources_tab(ui, server, detail, messages),
+                    ServerDetailTab::Resources => self.render_resources_tab(ui, server),
                     ServerDetailTab::Settings => self.render_server_settings_tab(ui, server, detail, messages),
                 }
             });
@@ -1045,16 +1047,18 @@ pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
         });
     }
 
-    fn render_console_tab(&mut self, ui: &mut Ui, server: &ServerMetadata, detail: &mut ServerDetailState, _messages: &mut Vec<AppMessage>) {
+    fn render_console_tab(&mut self, ui: &mut Ui, server: &ServerMetadata, _detail: &mut ServerDetailState, _messages: &mut Vec<AppMessage>) {
         use crate::ui::theme::*;
         use crate::ui::components::*;
         use crate::ui::logs::LogViewer;
         
-        // Get or create log viewer for this server
-        let mut log_viewer = self.log_viewers.lock().await
-            .entry(server.id.clone())
-            .or_insert_with(LogViewer::default)
-            .clone();
+        // Get or create log viewer for this server (use lock for sync context)
+        let mut log_viewer = {
+            let mut viewers = self.log_viewers.lock();
+            viewers.entry(server.id.clone())
+                .or_insert_with(LogViewer::default)
+                .clone()
+        };
         
         // If server is running, start log streaming
         if server.is_running {
@@ -1065,7 +1069,7 @@ pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
         render_log_viewer(ui, &mut log_viewer);
         
         // Save updated log viewer back
-        self.log_viewers.lock().await.insert(server.id.clone(), log_viewer);
+        self.log_viewers.lock().insert(server.id.clone(), log_viewer);
         
         // Command input
         ui.add_space(8.0);
@@ -1090,7 +1094,7 @@ pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
         });
     }
 
-    fn render_files_tab(&mut self, ui: &mut Ui, server: &ServerMetadata, detail: &mut ServerDetailState, messages: &mut Vec<AppMessage>) {
+    fn render_files_tab(&mut self, ui: &mut Ui, _server: &ServerMetadata, detail: &mut ServerDetailState, _messages: &mut Vec<AppMessage>) {
         use crate::ui::theme::*;
         use crate::ui::components::*;
         use crate::ui::file_browser::{render_file_browser, render_file_viewer, FileEntry};
@@ -1122,7 +1126,7 @@ pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
             &mut selected_file,
             |path| {
                 // View file
-                if let Ok(content) = std::fs::read_to_string(path) {
+                if let Ok(_content) = std::fs::read_to_string(path) {
                     // Show file viewer
                 }
             },
@@ -1152,14 +1156,14 @@ pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
         });
         ui.add_space(8.0);
         
-        // Load plugins from storage
-        let plugins = self.storage.lock().await.get_plugins(&server.id).unwrap_or_default();
+        // Load plugins from storage (use lock for sync context)
+        let plugins = self.storage.lock().get_plugins(&server.id).unwrap_or_default();
         
         if plugins.is_empty() {
-            render_empty_state(ui, "📦", "No plugins installed", "Install plugins from the Marketplace tab", Some("Open Marketplace"), || {
+            render_empty_state(ui, "📦", "No plugins installed", "Install plugins from the Marketplace tab", Some("Open Marketplace"), Some(|| {
                 self.ui.active_tab = crate::ui::Tab::Marketplace;
                 self.ui.marketplace.server_id = Some(server.id.clone());
-            });
+            }));
         } else {
             ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
                 for plugin in plugins {
@@ -1202,18 +1206,20 @@ pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
         }
     }
 
-    fn render_resources_tab(&mut self, ui: &mut Ui, server: &ServerMetadata, _detail: &mut ServerDetailState, _messages: &mut Vec<AppMessage>) {
+    fn render_resources_tab(&mut self, ui: &mut Ui, server: &ServerMetadata) {
         use crate::ui::resources::{render_resources_tab, ResourceMonitor, collect_system_metrics};
         
-        // Get or create resource monitor
-        let monitor = self.resource_monitors.lock().await
-            .entry(server.id.clone())
-            .or_insert_with(ResourceMonitor::default)
-            .clone();
+        // Get or create resource monitor (use lock for sync context)
+        let monitor = {
+            let mut monitors = self.resource_monitors.lock();
+            monitors.entry(server.id.clone())
+                .or_insert_with(ResourceMonitor::default)
+                .clone()
+        };
         
         // Update metrics if needed
         if monitor.should_update() {
-            let metrics = collect_system_metrics(&server.path);
+            let _metrics = collect_system_metrics(&server.path);
             // Update would happen here
         }
         
@@ -1326,6 +1332,25 @@ pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
             });
         });
     }
+}
+
+// Helper functions for rendering
+fn render_info_row(ui: &mut Ui, label: &str, value: &str) {
+    use crate::ui::theme::{ON_SURFACE, ON_SURFACE_VARIANT};
+    use eframe::egui::RichText;
+    ui.horizontal(|ui| {
+        ui.label(RichText::new(label).size(12.0).color(ON_SURFACE_VARIANT));
+        ui.add_space(8.0);
+        ui.label(RichText::new(value).size(12.0).color(ON_SURFACE).strong());
+    });
+    ui.add_space(4.0);
+}
+
+fn format_timestamp(timestamp: u64) -> String {
+    use std::time::UNIX_EPOCH;
+    let datetime = UNIX_EPOCH + std::time::Duration::from_secs(timestamp);
+    let local: chrono::DateTime<chrono::Local> = datetime.into();
+    local.format("%Y-%m-%d %H:%M").to_string()
 }
 
 impl eframe::App for IntmcApp {

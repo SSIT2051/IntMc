@@ -32,20 +32,28 @@ pub fn render_create_server_dialog(ctx: &egui::Context, data: &mut CreateServerD
         .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
         .show(ctx, |ui| {
             ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                render_section_header(ui, "🎮", "New Server");
+                render_section_header(ui, "🎮", Some("New Server"), None);
 
                 card_frame().show(ui, |ui| {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new("Server Name").size(16.0).color(ON_SURFACE));
                         ui.add_space(16.0);
-                        ui.text_edit_singleline(&mut data.name).hint_text("my-server").desired_width(300.0);
+                        ui.add(
+                            egui::TextEdit::singleline(&mut data.name)
+                                .hint_text("my-server")
+                                .desired_width(300.0)
+                        );
                     });
                     ui.add_space(16.0);
 
                     ui.horizontal(|ui| {
                         ui.label(RichText::new("Version").size(16.0).color(ON_SURFACE));
                         ui.add_space(16.0);
-                        ui.text_edit_singleline(&mut data.version).hint_text("1.21.1").desired_width(150.0);
+                        ui.add(
+                            egui::TextEdit::singleline(&mut data.version)
+                                .hint_text("1.21.1")
+                                .desired_width(150.0)
+                        );
                     });
                     ui.add_space(16.0);
 

@@ -1,13 +1,13 @@
-mod theme;
-mod servers;
-mod marketplace;
-mod lan;
-mod settings;
-mod file_browser;
-mod logs;
-mod resources;
-mod create_server;
-mod components;
+pub mod theme;
+pub mod servers;
+pub mod marketplace;
+pub mod lan;
+pub mod settings;
+pub mod file_browser;
+pub mod logs;
+pub mod resources;
+pub mod create_server;
+pub mod components;
 
 pub use theme::*;
 pub use servers::*;
@@ -20,20 +20,20 @@ pub use resources::*;
 pub use create_server::*;
 pub use components::*;
 
-use eframe::egui::{Color32, Context, Ui, FontDefinitions, FontFamily, FontData, Vec2, Align2, Rounding, Id, Stroke};
+use eframe::egui::{Color32, Context, Ui, FontDefinitions, FontFamily, FontData, Vec2, Align2, Id, Stroke, FontId, CornerRadius, Margin};
 use crate::storage::{Storage, ServerMetadata, PluginInfo, PluginFormat};
 use crate::app::AppMessage;
 use crate::lan::LanServer;
 use crate::plugins::PluginEntry;
 use crate::playit::PlayitManager;
 use crate::server::{ServerBackendType, get_backend, ServerConfig};
+use crate::ui::theme::{setup_material3_theme, ERROR_CONTAINER, ERROR, SUCCESS, ON_SURFACE, ON_SURFACE_VARIANT, PRIMARY, PRIMARY_CONTAINER};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Child;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use log::{info, warn, error};
-use super::theme::{ERROR_CONTAINER, ERROR, SUCCESS, ON_SURFACE, ON_SURFACE_VARIANT, PRIMARY, PRIMARY_CONTAINER};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
@@ -275,14 +275,14 @@ impl IntmcUI {
     fn render_toasts(&mut self, ui: &mut Ui) {
         if self.show_global_error {
             if let Some(err) = &self.error_message {
-                egui::Area::new(Id::new("global_error"))
+                egui::Area::new(Id::unique("global_error"))
                     .anchor(Align2::CENTER_TOP, Vec2::new(0.0, 12.0))
                     .show(ui.ctx(), |ui| {
                         egui::Frame::default()
                             .fill(ERROR_CONTAINER)
                             .stroke(Stroke::new(1.0, ERROR))
-                            .rounding(Rounding::same(12.0))
-                            .inner_margin(egui::Margin::symmetric(16.0, 12.0))
+                            .corner_radius(CornerRadius::same(12.0))
+                            .inner_margin(Margin::symmetric(16.0, 12.0))
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
                                     ui.colored_label(ERROR, "⚠");
@@ -299,14 +299,14 @@ impl IntmcUI {
 
         if self.show_global_status {
             if let Some(status) = &self.status_message {
-                egui::Area::new(Id::new("global_status"))
+                egui::Area::new(Id::unique("global_status"))
                     .anchor(Align2::CENTER_TOP, Vec2::new(0.0, 12.0))
                     .show(ui.ctx(), |ui| {
                         egui::Frame::default()
                             .fill(SUCCESS.linear_multiply(0.15))
                             .stroke(Stroke::new(1.0, SUCCESS))
-                            .rounding(Rounding::same(12.0))
-                            .inner_margin(egui::Margin::symmetric(16.0, 12.0))
+                            .corner_radius(CornerRadius::same(12.0))
+                            .inner_margin(Margin::symmetric(16.0, 12.0))
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
                                     ui.colored_label(SUCCESS, "✓");
@@ -397,7 +397,7 @@ impl IntmcUI {
                 if selected {
                     ui.painter().rect_filled(
                         rect.expand(4.0),
-                        Rounding::same(16.0),
+                        CornerRadius::same(16.0),
                         PRIMARY_CONTAINER,
                     );
                 }

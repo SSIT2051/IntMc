@@ -1,4 +1,4 @@
-use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextEdit, ComboBox};
+use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextEdit, ComboBox, epaint::StrokeKind};
 use crate::storage::{PluginInfo, PluginFormat};
 use crate::plugins::PluginEntry;
 use crate::app::AppMessage;
@@ -87,6 +87,7 @@ pub fn render_plugin_card(ui: &mut Ui, plugin: &PluginEntry, server_id: Option<&
             };
             
             let rect = ui.allocate_exact_size(Vec2::splat(56.0), Sense::hover());
+            let rect = rect.0;
             ui.painter().circle_filled(rect.center(), 28.0, format_color.linear_multiply(0.15));
             ui.painter().circle_stroke(rect.center(), 28.0, Stroke::new(2.0, format_color));
             ui.painter().text(
