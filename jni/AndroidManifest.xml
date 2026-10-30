@@ -3,16 +3,25 @@
     package="com.intmc.app"
     android:versionCode="1"
     android:versionName="0.1.0">
-    
-    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="33" />
-    
+
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+
+    <uses-feature android:glEsVersion="0x00030000" android:required="true" />
+
     <application
         android:label="intmc"
-        android:theme="@style/Theme.AppCompat.Light">
+        android:theme="@style/Theme.AppCompat.Light"
+        android:hasCode="false">
         <activity
-            android:name=".MainActivity"
+            android:name="android.app.NativeActivity"
             android:label="intmc"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|keyboard">
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|keyboard|density|fontScale"
+            android:screenOrientation="unspecified"
+            android:launchMode="singleTask"
+            android:exported="true">
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="intmc" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

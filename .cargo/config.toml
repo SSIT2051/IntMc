@@ -1,7 +1,39 @@
 [target.aarch64-linux-android]
-linker = "clang"
-rustflags = ["-C", "link-arg=-landroid", "-C", "link-arg=-llog"]
+linker = "aarch64-linux-android35-clang"
+rustflags = [
+    "-C", "link-arg=-landroid",
+    "-C", "link-arg=-llog",
+    "-C", "link-arg=-lEGL",
+    "-C", "link-arg=-lGLESv3",
+    "-C", "link-arg=-ljnigraphics",
+]
 
 [target.armv7-linux-androideabi]
-linker = "clang"
-rustflags = ["-C", "link-arg=-landroid", "-C", "link-arg=-llog"]
+linker = "armv7a-linux-androideabi35-clang"
+rustflags = [
+    "-C", "link-arg=-landroid",
+    "-C", "link-arg=-llog",
+    "-C", "link-arg=-lEGL",
+    "-C", "link-arg=-lGLESv3",
+    "-C", "link-arg=-ljnigraphics",
+]
+
+[target.x86_64-linux-android]
+linker = "x86_64-linux-android35-clang"
+rustflags = [
+    "-C", "link-arg=-landroid",
+    "-C", "link-arg=-llog",
+    "-C", "link-arg=-lEGL",
+    "-C", "link-arg=-lGLESv3",
+    "-C", "link-arg=-ljnigraphics",
+]
+
+[target.i686-linux-android]
+linker = "i686-linux-android35-clang"
+rustflags = [
+    "-C", "link-arg=-landroid",
+    "-C", "link-arg=-llog",
+    "-C", "link-arg=-lEGL",
+    "-C", "link-arg=-lGLESv3",
+    "-C", "link-arg=-ljnigraphics",
+]

@@ -24,6 +24,7 @@ pub enum PlayitError {
     NotFound(String),
 }
 
+#[derive(Debug, Clone)]
 pub struct PlayitManager {
     binary_path: Option<String>,
     tunnels: Arc<Mutex<Vec<TunnelInfo>>>,

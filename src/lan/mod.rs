@@ -22,6 +22,7 @@ pub enum LanError {
     Parse(String),
 }
 
+#[derive(Debug, Clone)]
 pub struct LanDiscovery {
     socket: Arc<Mutex<UdpSocket>>,
     broadcast_addr: String,
