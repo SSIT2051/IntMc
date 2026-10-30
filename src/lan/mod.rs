@@ -113,7 +113,7 @@ impl LanDiscovery {
         }
     }
 
-    fn build_announcement_packet(name: &str, port: u16) -> Vec<u8> {
+    fn build_announcement_packet(name: &str, _port: u16) -> Vec<u8> {
         // Minecraft LAN announcement packet
         let mut packet = Vec::new();
         // Magic bytes

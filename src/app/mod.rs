@@ -19,7 +19,7 @@ pub struct IntmcApp {
 }
 
 impl IntmcApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         let db_path = Self::get_db_path();
         let storage = Storage::open(&db_path).expect("Failed to open database");
         
