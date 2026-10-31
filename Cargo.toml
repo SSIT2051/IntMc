@@ -22,7 +22,7 @@ log = "0.4"
 env_logger = "0.10"
 
 # UI (Slint - lightweight, compiled, native rendering)
-slint = "1.5"
+slint = { version = "1.5", features = ["backend-android-activity", "renderer-software"] }
 
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }

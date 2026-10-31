@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background">#000000</color>
+    <color name="error">#CF6679</color>
+    <color name="on_background">#FFFFFF</color>
+    <color name="on_primary">#000000</color>
+    <color name="on_secondary">#000000</color>
+    <color name="on_surface">#FFFFFF</color>
+    <color name="on_surface_variant">#C0C0C0</color>
+    <color name="primary">#BB86FC</color>
+    <color name="primary_container">#3700B3</color>
+    <color name="secondary">#03DAC6</color>
+    <color name="surface">#121212</color>
+    <color name="surface_variant">#1E1E1E</color>
+    <mipmap name="ic_launcher"/>
+    <mipmap name="ic_launcher_round"/>
+    <string name="app_name">intmc</string>
+    <string name="console">Console</string>
+    <string name="create_first_server">Tap + to create your first Minecraft server</string>
+    <string name="create_server">Create Server</string>
+    <string name="delete">Delete</string>
+    <string name="failed_to_create_tunnel">Failed to create tunnel</string>
+    <string name="lan_discovery">LAN Discovery</string>
+    <string name="marketplace">Marketplace</string>
+    <string name="no_lan_servers">No LAN servers discovered</string>
+    <string name="no_servers">No servers yet</string>
+    <string name="server_created">Server created</string>
+    <string name="server_deleted">Server deleted</string>
+    <string name="server_started">Server started</string>
+    <string name="server_stopped">Server stopped</string>
+    <string name="settings">Settings</string>
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+    <string name="tunnel_created">Tunnel created</string>
+    <style name="Theme.Intmc" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+    </style>
+</resources>

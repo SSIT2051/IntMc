@@ -1,0 +1,7 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Rules for full backup. -->
+    <full-backup-content>
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="database" path="." />
+    </full-backup-content>
+</resources>

@@ -1,0 +1,7 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Rules for data backup. -->
+    <data-extraction-rules>
+        <cloud-data backups="false" />
+        <device-transfer backups="false" />
+    </data-extraction-rules>
+</resources>

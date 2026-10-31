@@ -14,9 +14,12 @@ mod storage;
 mod ui;
 
 #[unsafe(no_mangle)]
-fn android_main(_app: AndroidApp) {
+fn android_main(app: AndroidApp) {
     android_logger::init_once(Config::default().with_max_level(LevelFilter::Debug));
     info!("intmc starting on Android...");
+
+    #[cfg(target_os = "android")]
+    slint::android::init(app).expect("Failed to initialize Slint Android platform");
 
     panic::set_hook(Box::new(|panic_info| {
         error!("PANIC: {}", panic_info);
@@ -47,4 +50,7 @@ fn android_main(_app: AndroidApp) {
     main_window.show().unwrap();
 
     info!("intmc UI initialized and showing");
+
+    // Run the Slint event loop
+    main_window.run();
 }

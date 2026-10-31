@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">intmc</string>
+    <string name="create_server">Create Server</string>
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+    <string name="delete">Delete</string>
+    <string name="console">Console</string>
+    <string name="settings">Settings</string>
+    <string name="lan_discovery">LAN Discovery</string>
+    <string name="marketplace">Marketplace</string>
+    <string name="no_servers">No servers yet</string>
+    <string name="create_first_server">Tap + to create your first Minecraft server</string>
+    <string name="server_created">Server created</string>
+    <string name="server_started">Server started</string>
+    <string name="server_stopped">Server stopped</string>
+    <string name="server_deleted">Server deleted</string>
+    <string name="tunnel_created">Tunnel created</string>
+    <string name="failed_to_create_tunnel">Failed to create tunnel</string>
+    <string name="no_lan_servers">No LAN servers discovered</string>
+</resources>
