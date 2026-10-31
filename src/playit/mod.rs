@@ -112,7 +112,7 @@ impl PlayitManager {
         None
     }
 
-    pub async fn is_available(&self) -> bool {
+    pub fn is_available(&self) -> bool {
         self.binary_path.is_some()
     }
 }

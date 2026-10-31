@@ -21,10 +21,8 @@ desktop = []
 log = "0.4"
 env_logger = "0.10"
 
-# UI (egui-based, lightweight)
-egui = "0.37"
-egui-wgpu = "0.37"
-eframe = { version = "0.37", features = ["wgpu", "android-native-activity"], default-features = false }
+# UI (Slint - lightweight, compiled, native rendering)
+slint = "1.5"
 
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }
@@ -69,27 +67,14 @@ openssl-sys = { version = "0.9", features = ["vendored"] }
 
 # Android-specific dependencies
 [target.'cfg(target_os = "android")'.dependencies]
-# Use a specific version that works with eframe 0.37
-android-activity = { version = "0.6.1", features = ["native-activity"] }
+android-activity = { version = "0.6", features = ["native-activity"] }
 ndk = "0.9"
 android_logger = "0.15"
+
+[build-dependencies]
+slint-build = "1.5"
 
 [dev-dependencies]
 tempfile = "3"
 
 [package.metadata.android]
-package-name = "com.example.intmc"
-assets = "assets"
-permissions = ["INTERNET", "ACCESS_NETWORK_STATE"]
-activity = "NativeActivity"
-
-[package.metadata.android.signing.release]
-path = "debug.keystore"
-keystore_password = "android"
-key_password = "android"
-alias = "androiddebugkey"
-
-[profile.release]
-lto = true
-codegen-units = 1
-panic = "abort"

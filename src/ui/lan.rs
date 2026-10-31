@@ -1,9 +1,10 @@
-use eframe::egui::{Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense};
+use eframe::egui::{Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, DragValue, TextEdit};
 use crate::lan::LanServer;
 use crate::app::AppMessage;
-use super::{card_frame, primary_button, PRIMARY, ON_SURFACE, ON_SURFACE_VARIANT};
+use crate::ui::LanState;
+use super::{card_frame, primary_button, PRIMARY, ON_SURFACE, ON_SURFACE_VARIANT, ERROR};
 
-pub fn render_lan_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::Mutex<crate::storage::Storage>>, _playit: &crate::playit::PlayitManager, messages: &mut Vec<AppMessage>) {
+pub fn render_lan_tab(ui: &mut Ui, lan: &mut LanState, messages: &mut Vec<AppMessage>) {
     ui.horizontal(|ui| {
         ui.label(RichText::new("Local Network").size(20.0).strong());
         ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
@@ -20,20 +21,24 @@ pub fn render_lan_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::Mutex<
         ui.horizontal(|ui| {
             ui.label("Server Name:");
             ui.add_space(8.0);
-            ui.text_edit_singleline(&mut String::from("intmc Server"));
+            ui.add(TextEdit::singleline(&mut lan.announce_name).desired_width(200.0));
         });
         ui.add_space(8.0);
         ui.horizontal(|ui| {
             ui.label("Port:");
             ui.add_space(8.0);
-            ui.add(egui::DragValue::new(&mut 25565u16).speed(1.0));
+            ui.add(DragValue::new(&mut lan.announce_port).speed(1.0).range(1024..=65535));
         });
         ui.add_space(8.0);
         ui.horizontal(|ui| {
-            let mut enabled = false;
-            ui.checkbox(&mut enabled, "Announce on LAN");
+            ui.checkbox(&mut lan.announce_enabled, "Announce on LAN");
             ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
-                if primary_button(ui, "Start Announcing").clicked() {
+                if primary_button(ui, if lan.announce_enabled { "Stop Announcing" } else { "Start Announcing" }).clicked() {
+                    if lan.announce_enabled {
+                        // Stop announcing - could send a message to stop
+                    } else {
+                        messages.push(AppMessage::AnnounceLan { name: lan.announce_name.clone(), port: lan.announce_port });
+                    }
                 }
             });
         });
@@ -42,31 +47,19 @@ pub fn render_lan_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::Mutex<
 
     ui.horizontal(|ui| {
         ui.strong(RichText::new("Discovered Servers").size(18.0));
+        if lan.discovering {
+            ui.add_space(8.0);
+            ui.spinner();
+        }
     });
     ui.add_space(8.0);
 
-    let discovered = vec![
-        LanServer {
-            name: "Survival World".to_string(),
-            ip: "192.168.1.45".to_string(),
-            port: 25565,
-            version: "1.21.1".to_string(),
-            motd: "Welcome to our survival server!".to_string(),
-            players_online: 3,
-            max_players: 20,
-        },
-        LanServer {
-            name: "Creative Build".to_string(),
-            ip: "192.168.1.45".to_string(),
-            port: 25566,
-            version: "1.21".to_string(),
-            motd: "Creative mode - build anything!".to_string(),
-            players_online: 1,
-            max_players: 10,
-        },
-    ];
+    if let Some(err) = &lan.error {
+        ui.colored_label(ERROR, err);
+        ui.add_space(8.0);
+    }
 
-    if discovered.is_empty() {
+    if lan.servers.is_empty() {
         ui.centered_and_justified(|ui| {
             ui.vertical_centered(|ui| {
                 ui.add_space(40.0);
@@ -79,7 +72,7 @@ pub fn render_lan_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::Mutex<
         });
     } else {
         ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-            for server in &discovered {
+            for server in &lan.servers {
                 render_lan_server_card(ui, server, messages);
             }
         });

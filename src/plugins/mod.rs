@@ -35,6 +35,7 @@ pub enum PluginError {
     Verification(String),
 }
 
+#[derive(Debug, Clone)]
 pub struct PluginMarketplace {
     cache_dir: PathBuf,
 }

@@ -55,6 +55,7 @@ pub fn render_marketplace_tab(ui: &mut Ui, marketplace: &mut MarketplaceState, m
             if marketplace.loading {
                 ui.spinner();
             } else if outlined_button(ui, "🔄 Refresh").clicked() {
+                messages.push(AppMessage::RefreshMarketplace);
             }
         });
     });

@@ -1,8 +1,9 @@
-use eframe::egui::{Ui, RichText, ScrollArea, Layout, TextEdit, ComboBox, Vec2};
+use eframe::egui::{Ui, RichText, ScrollArea, Layout, TextEdit, ComboBox, Vec2, DragValue};
 use crate::app::AppMessage;
+use crate::ui::SettingsState;
 use super::{card_frame, elevated_card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, icon_button, chip, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING, render_section_header_simple};
 
-pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::Mutex<crate::storage::Storage>>, _playit: &crate::playit::PlayitManager, _messages: &mut Vec<AppMessage>) {
+pub fn render_settings_tab(ui: &mut Ui, settings: &mut SettingsState, _playit: &crate::playit::PlayitManager, messages: &mut Vec<AppMessage>) {
     ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
         render_section_header_simple(ui, "🌐", "Playit.gg Tunnel");
         card_frame().show(ui, |ui| {
@@ -14,6 +15,7 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
                 });
                 ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
                     if outlined_button(ui, "Sign In").clicked() {
+                        // TODO: Implement sign in flow
                     }
                 });
             });
@@ -24,18 +26,21 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
             ui.horizontal(|ui| {
                 ui.label(RichText::new("Email").size(14.0).color(ON_SURFACE));
                 ui.add_space(12.0);
-                ui.add(TextEdit::singleline(&mut String::new()).hint_text("email@example.com").desired_width(250.0));
+                ui.add(TextEdit::singleline(&mut settings.playit_email).hint_text("email@example.com").desired_width(250.0));
             });
             ui.add_space(12.0);
             ui.horizontal(|ui| {
                 ui.label(RichText::new("Auth Token").size(14.0).color(ON_SURFACE));
                 ui.add_space(12.0);
-                ui.add(TextEdit::singleline(&mut String::new()).hint_text("Your Playit.gg auth token").password(true).desired_width(250.0));
+                ui.add(TextEdit::singleline(&mut settings.playit_token).hint_text("Your Playit.gg auth token").password(true).desired_width(250.0));
             });
             ui.add_space(12.0);
             ui.horizontal(|ui| {
                 ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
                     if primary_button(ui, "Save & Connect").clicked() {
+                        if !settings.playit_email.is_empty() && !settings.playit_token.is_empty() {
+                            messages.push(AppMessage::ShowStatus { message: "Playit.gg credentials saved".to_string() });
+                        }
                     }
                 });
             });
@@ -51,8 +56,7 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
                     ui.label(RichText::new("Use dark mode (requires restart)").size(13.0).color(ON_SURFACE_VARIANT));
                 });
                 ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
-                    let mut dark = true;
-                    ui.checkbox(&mut dark, "");
+                    ui.checkbox(&mut settings.theme_dark, "");
                 });
             });
         });
@@ -60,7 +64,6 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
 
         render_section_header_simple(ui, "🔔", "Notifications");
         card_frame().show(ui, |ui| {
-            let mut notifications = true;
             ui.horizontal(|ui| {
                 ui.vertical(|ui| {
                     ui.label(RichText::new("Push Notifications").size(16.0).color(ON_SURFACE).strong());
@@ -68,14 +71,13 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
                     ui.label(RichText::new("Receive alerts for server events").size(13.0).color(ON_SURFACE_VARIANT));
                 });
                 ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.checkbox(&mut notifications, "");
+                    ui.checkbox(&mut settings.notifications_enabled, "");
                 });
             });
             ui.add_space(12.0);
             ui.separator();
             ui.add_space(12.0);
             
-            let mut auto_refresh = true;
             ui.horizontal(|ui| {
                 ui.vertical(|ui| {
                     ui.label(RichText::new("Auto Refresh").size(16.0).color(ON_SURFACE).strong());
@@ -83,7 +85,7 @@ pub fn render_settings_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::M
                     ui.label(RichText::new("Automatically refresh server status").size(13.0).color(ON_SURFACE_VARIANT));
                 });
                 ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.checkbox(&mut auto_refresh, "");
+                    ui.checkbox(&mut settings.auto_refresh, "");
                 });
             });
             ui.add_space(12.0);

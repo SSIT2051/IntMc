@@ -1,9 +1,9 @@
 use android_activity::AndroidApp;
 use android_logger::Config;
 use log::{info, error, LevelFilter};
-use egui_wgpu::{WgpuSetup, WgpuSetupCreateNew, wgpu};
-use std::sync::Arc;
+use slint::ComponentHandle;
 use std::panic;
+use std::sync::Arc;
 
 mod app;
 mod server;
@@ -14,7 +14,7 @@ mod storage;
 mod ui;
 
 #[unsafe(no_mangle)]
-fn android_main(app: AndroidApp) {
+fn android_main(_app: AndroidApp) {
     android_logger::init_once(Config::default().with_max_level(LevelFilter::Debug));
     info!("intmc starting on Android...");
 
@@ -30,54 +30,21 @@ fn android_main(app: AndroidApp) {
         }
     }));
 
-    let result = run_eframe(app);
-    if let Err(e) = result {
-        error!("Failed to run eframe: {}", e);
-    }
-}
+    // Open storage
+    let storage = crate::storage::Storage::open(&crate::app::get_db_path())
+        .expect("Failed to open storage");
 
-fn run_eframe(app: AndroidApp) -> Result<(), Box<dyn std::error::Error>> {
-    info!("Setting up wgpu with GLES backend preference...");
-    
-    let wgpu_setup = WgpuSetup::CreateNew(WgpuSetupCreateNew {
-        device_descriptor: Arc::new(|adapter| {
-            info!("Adapter: {:?}, Backend: {:?}", adapter.get_info().name, adapter.get_info().backend);
-            let base_limits = if adapter.get_info().backend == wgpu::Backend::Gl {
-                wgpu::Limits::downlevel_webgl2_defaults()
-            } else {
-                wgpu::Limits::default()
-            };
+    // Create app state
+    let app_state = Arc::new(app::AppState::new(storage));
 
-            wgpu::DeviceDescriptor {
-                label: Some("egui wgpu device"),
-                required_limits: wgpu::Limits {
-                    max_color_attachments: 4,
-                    max_texture_dimension_2d: 8192,
-                    ..base_limits
-                },
-                ..Default::default()
-            }
-        }),
-        ..WgpuSetupCreateNew::without_display_handle()
-    });
+    // Create Slint main window
+    let main_window = ui::create_main_window().expect("Failed to create main window");
 
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([400.0, 600.0]),
-        android_app: Some(app),
-        wgpu_options: eframe::WgpuConfiguration {
-            wgpu_setup,
-            ..Default::default()
-        },
-        ..Default::default()
-    };
+    // Connect Slint UI callbacks to AppState logic
+    ui::connect_messages(&main_window, app_state.clone());
 
-    info!("Starting eframe run_native...");
-    eframe::run_native(
-        "intmc",
-        options,
-        Box::new(|cc| {
-            info!("eframe CreationContext received, egui context available");
-            Ok(Box::new(app::IntmcApp::new(cc)))
-        }),
-    ).map_err(|e| format!("eframe error: {}", e).into())
+    // Show the window
+    main_window.show().unwrap();
+
+    info!("intmc UI initialized and showing");
 }

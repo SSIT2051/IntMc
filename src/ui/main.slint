@@ -1,0 +1,225 @@
+export struct ServerRow {
+    id: string,
+    name: string,
+    backend: string,
+    version: string,
+    port: int,
+    ip: string,
+    is_running: bool,
+}
+
+export struct LanServerRow {
+    name: string,
+    ip: string,
+    port: int,
+    version: string,
+    motd: string,
+    players_online: int,
+    max_players: int,
+}
+
+export struct PluginRow {
+    name: string,
+    version: string,
+    enabled: bool,
+}
+
+export struct PluginEntryRow {
+    name: string,
+    version: string,
+    description: string,
+    author: string,
+    download_url: string,
+    format: string,
+}
+
+component ButtonRect inherits Rectangle {
+    in property <string> text: "";
+    in property <color> bg-color: #2a2a2a;
+    in property <color> text-color: #ffffff;
+    callback clicked;
+
+    height: 32px;
+    background: root.bg-color;
+
+    Text {
+        x: 8px;
+        y: 4px;
+        text: root.text;
+        font-size: 14px;
+        color: root.text-color;
+    }
+
+    TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+component HomeScreen inherits Rectangle {
+    in property <[ServerRow]> servers: [];
+    callback create-clicked();
+    callback server-started(string);
+    callback server-stopped(string);
+    callback server-deleted(string);
+    callback server-selected(string);
+
+    Text {
+        y: 16px;
+        x: 16px;
+        text: "Servers";
+        font-size: 24px;
+        font-weight: 700;
+        color: #ffffff;
+    }
+
+    Rectangle {
+        y: 60px;
+        width: parent.width;
+        height: parent.height - 60px;
+        background: #1a1a1a;
+    }
+}
+
+component CreateServerScreen inherits Rectangle {
+    in property <string> name: "";
+    in property <int> port: 25565;
+    in property <string> backend: "Pumpkin";
+    callback name-changed(string);
+    callback port-changed(int);
+    callback backend-changed(string);
+    callback create-submitted();
+    callback create-cancelled();
+
+    Text {
+        y: 24px;
+        x: 24px;
+        text: "Create Server";
+        font-size: 24px;
+        font-weight: 700;
+        color: #ffffff;
+    }
+}
+
+export component MainWindow inherits Window {
+    title: "intmc";
+    width: 400px;
+    height: 850px;
+    background: #0f0f0f;
+
+    callback load-servers();
+    callback create-server(string, string, int);
+    callback start-server(string);
+    callback stop-server(string);
+    callback delete-server(string);
+    callback open-server-detail(string);
+    callback show-create-dialog();
+    callback hide-create-dialog();
+    callback discover-lan();
+    callback join-lan(string, string, int);
+    callback toggle-plugin(string, string);
+    callback install-plugin(string, string);
+    callback refresh-marketplace();
+    callback send-command(string, string);
+    callback create-tunnel(string, int);
+    callback remove-tunnel(string);
+    callback save-settings(string, string, bool);
+
+    in-out property <string> current-screen: "home";
+    in-out property <string> status-message: "";
+    in-out property <string> error-message: "";
+    in-out property <string> create-name: "";
+    in-out property <int> create-port: 25565;
+    in-out property <string> create-backend: "Pumpkin";
+
+    in property <[ServerRow]> servers: [];
+    in property <[LanServerRow]> lan-servers: [];
+    in property <[PluginRow]> plugins: [];
+    in property <[PluginEntryRow]> marketplace-plugins: [];
+    in-out property <string> selected-server-id: "";
+    in-out property <string> console-output: "";
+    in-out property <string> console-input: "";
+    in-out property <string> selected-plugin-server: "";
+    in-out property <string> plugin-search: "";
+
+    Rectangle {
+        y: 0;
+        height: 56px;
+        width: parent.width;
+        background: #1a1a1a;
+
+        Text {
+            x: 16px;
+            y: 16px;
+            text: "intmc";
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        ButtonRect {
+            x: parent.width - 100px;
+            y: 12px;
+            width: 80px;
+            height: 32px;
+            text: "Refresh";
+            clicked => { root.load-servers(); }
+        }
+    }
+
+    Rectangle {
+        y: 56px;
+        height: 24px;
+        width: parent.width;
+        background: #1a1a1a;
+
+        Text {
+            x: 8px;
+            y: 4px;
+            text: root.status-message != "" ? root.status-message : root.error-message;
+            color: root.error-message != "" ? #ff5555 : #4caf50;
+            font-size: 12px;
+        }
+    }
+
+    HomeScreen {
+        y: 80px;
+        width: parent.width;
+        height: parent.height - 80px;
+        visible: root.current-screen == "home";
+        servers: root.servers;
+        create-clicked => { root.show-create-dialog(); }
+        server-started(id) => { root.start-server(id); }
+        server-stopped(id) => { root.stop-server(id); }
+        server-deleted(id) => { root.delete-server(id); }
+        server-selected(id) => { root.open-server-detail(id); }
+    }
+
+    CreateServerScreen {
+        y: 80px;
+        width: parent.width;
+        height: parent.height - 80px;
+        visible: root.current-screen == "create";
+        name: root.create-name;
+        port: root.create-port;
+        backend: root.create-backend;
+        name-changed(text) => { root.create-name = text; }
+        port-changed(value) => { root.create-port = value; }
+        backend-changed(text) => { root.create-backend = text; }
+        create-submitted => {
+            root.create-server(root.create-name, root.create-backend, root.create-port);
+        }
+        create-cancelled => { root.hide-create-dialog(); }
+    }
+
+    ButtonRect {
+        visible: root.current-screen == "home";
+        x: parent.width - 76px;
+        y: parent.height - 86px;
+        width: 56px;
+        height: 56px;
+        text: "+";
+        bg-color: #64b4ff;
+        text-color: #ffffff;
+        clicked => { root.show-create-dialog(); }
+    }
+}
