@@ -28,7 +28,7 @@ pub struct ResourceMetrics {
     pub max_servers: usize,
 }
 
-pub fn collect_system_metrics(server_path: &PathBuf) -> ResourceMetrics {
+pub fn collect_system_metrics(_server_path: &PathBuf) -> ResourceMetrics {
     // Placeholder implementation - would use sysinfo crate in real app
     ResourceMetrics {
         memory_used_mb: 1200,
@@ -41,7 +41,7 @@ pub fn collect_system_metrics(server_path: &PathBuf) -> ResourceMetrics {
     }
 }
 
-pub fn render_resources_tab(ui: &mut Ui, monitor: &ResourceMonitor, server_id: &str) {
+pub fn render_resources_tab(ui: &mut Ui, _monitor: &ResourceMonitor, server_id: &str) {
     let metrics = collect_system_metrics(&PathBuf::from("."));
     
     ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {

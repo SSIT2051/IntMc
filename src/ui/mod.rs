@@ -21,7 +21,7 @@ pub use create_server::*;
 pub use components::*;
 
 use eframe::egui::{Ui, FontId, FontFamily, Vec2, Align2, Id, Stroke, CornerRadius, Margin, Layout, ScrollArea, RichText, TextStyle, TextEdit, DragValue};
-use crate::storage::{Storage, ServerMetadata};
+use crate::storage::{Storage, ServerMetadata, PluginFormat};
 use crate::app::AppMessage;
 use crate::lan::LanServer;
 use crate::plugins::PluginEntry;
@@ -273,7 +273,7 @@ impl IntmcUI {
 
     fn render_toasts(&mut self, ui: &mut Ui) {
         if self.show_global_error {
-            if let Some(err) = &self.error_message {
+            if let Some(err) = self.error_message.clone() {
                 egui::Area::new(Id::unique("global_error"))
                     .anchor(Align2::CENTER_TOP, Vec2::new(0.0, 12.0))
                     .show(ui.ctx(), |ui| {
@@ -297,7 +297,7 @@ impl IntmcUI {
         }
 
         if self.show_global_status {
-            if let Some(status) = &self.status_message {
+            if let Some(status) = self.status_message.clone() {
                 egui::Area::new(Id::unique("global_status"))
                     .anchor(Align2::CENTER_TOP, Vec2::new(0.0, 12.0))
                     .show(ui.ctx(), |ui| {

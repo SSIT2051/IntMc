@@ -13,7 +13,7 @@ use crate::lan::LanDiscovery;
 use crate::server::{ServerConfig, ServerBackendType, get_backend, ServerProcess};
 use crate::plugins::PluginMarketplace;
 use log::{info, warn};
-use eframe::egui::{Context, Ui, FontDefinitions, FontFamily, FontData, Vec2, Align2, Color32, CornerRadius, Stroke, RichText, FontId, ScrollArea, Layout, Sense, TextStyle, DragValue, TextEdit};
+use eframe::egui::{Context, Ui, FontDefinitions, FontFamily, FontData, Vec2, Align2, RichText, ScrollArea, Layout, DragValue, TextEdit};
 use eframe::Frame;
 use crate::ui::theme::setup_material3_theme;
 use crate::ui::logs::{LogViewer, render_log_viewer};
@@ -780,7 +780,7 @@ impl IntmcApp {
         });
     }
 
-    pub async fn update_server_config(&self, server_id: &str, config: ServerConfig) -> Result<(), String> {
+    pub async fn update_server_config(&self, _server_id: &str, config: ServerConfig) -> Result<(), String> {
         let metadata = crate::storage::ServerMetadata {
             id: config.id.clone(),
             name: config.name.clone(),
@@ -904,14 +904,13 @@ pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
 
     fn render_server_detail_dialog(
         &mut self,
-        ctx: &egui::Context,
+        ctx: &Context,
         server: &ServerMetadata,
         detail: &mut ServerDetailState,
         messages: &mut Vec<AppMessage>,
     ) {
-        use crate::ui::theme::*;
         use crate::ui::components::*;
-        
+
         egui::Window::new(format!("{} - {}", server.name, server.backend))
             .collapsible(false)
             .resizable(true)
@@ -1093,9 +1092,8 @@ pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
     }
 
     fn render_files_tab(&mut self, ui: &mut Ui, _server: &ServerMetadata, detail: &mut ServerDetailState, _messages: &mut Vec<AppMessage>) {
-        use crate::ui::theme::*;
         use crate::ui::components::*;
-        use crate::ui::file_browser::{render_file_browser, render_file_viewer, FileEntry};
+        use crate::ui::file_browser::render_file_browser;
         
         ui.horizontal(|ui| {
             ui.strong("Files");

@@ -99,7 +99,7 @@ pub fn render_create_server_dialog(ctx: &egui::Context, data: &mut CreateServerD
                         if primary_button(ui, "Create Server").clicked() {
                             messages.push(AppMessage::CreateServer {
                                 name: data.name.clone(),
-                                backend: data.backend,
+                                backend: data.backend.clone(),
                                 port: data.port,
                             });
                             *should_close = true;

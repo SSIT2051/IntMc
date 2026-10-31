@@ -1,4 +1,4 @@
-use eframe::egui::{Color32, Style, Visuals, FontDefinitions, FontFamily, FontData, FontId, TextStyle, CornerRadius, Stroke, Widgets};
+use eframe::egui::{Color32, Style, Visuals, FontDefinitions, FontFamily, FontData, FontId, TextStyle, CornerRadius, Stroke};
 
 pub fn setup_material3_theme(ctx: &egui::Context) {
     let font_bytes = include_bytes!("../../assets/DejaVuSans.ttf");
@@ -24,49 +24,49 @@ pub fn setup_material3_theme(ctx: &egui::Context) {
     visuals.warn_fg_color = Color32::from_rgb(255, 180, 0);
     visuals.error_fg_color = Color32::from_rgb(255, 80, 80);
     visuals.hyperlink_color = Color32::from_rgb(100, 180, 255);
-    visuals.selection = egui::epaint::Selection {
+    visuals.selection = egui::style::Selection {
         bg_fill: Color32::from_rgba_premultiplied(100, 180, 255, 80),
         stroke: Stroke::new(1.0, Color32::from_rgb(100, 180, 255)),
     };
-    visuals.widgets = Widgets {
-        noninteractive: egui::WidgetVisuals {
+    visuals.widgets = egui::style::Widgets {
+        noninteractive: egui::style::WidgetVisuals {
             bg_fill: Color32::from_rgb(39, 39, 42),
             weak_bg_fill: Color32::from_rgb(28, 28, 30),
             bg_stroke: Stroke::new(1.0, Color32::from_rgb(63, 63, 70)),
             fg_stroke: Stroke::new(1.0, Color32::from_rgb(212, 212, 216)),
-            rounding: CornerRadius::same(8),
+            corner_radius: CornerRadius::same(8),
             expansion: 0.0,
         },
-        inactive: egui::WidgetVisuals {
+        inactive: egui::style::WidgetVisuals {
             bg_fill: Color32::from_rgb(39, 39, 42),
             weak_bg_fill: Color32::from_rgb(28, 28, 30),
             bg_stroke: Stroke::new(1.0, Color32::from_rgb(63, 63, 70)),
             fg_stroke: Stroke::new(1.0, Color32::from_rgb(212, 212, 216)),
-            rounding: CornerRadius::same(12),
+            corner_radius: CornerRadius::same(12),
             expansion: 0.0,
         },
-        hovered: egui::WidgetVisuals {
+        hovered: egui::style::WidgetVisuals {
             bg_fill: Color32::from_rgb(51, 51, 55),
             weak_bg_fill: Color32::from_rgb(39, 39, 42),
             bg_stroke: Stroke::new(1.0, Color32::from_rgb(100, 180, 255)),
             fg_stroke: Stroke::new(1.0, Color32::from_rgb(255, 255, 255)),
-            rounding: CornerRadius::same(12),
+            corner_radius: CornerRadius::same(12),
             expansion: 1.0,
         },
-        active: egui::WidgetVisuals {
+        active: egui::style::WidgetVisuals {
             bg_fill: Color32::from_rgb(100, 180, 255),
             weak_bg_fill: Color32::from_rgb(80, 160, 240),
             bg_stroke: Stroke::new(1.0, Color32::from_rgb(100, 180, 255)),
             fg_stroke: Stroke::new(1.0, Color32::from_rgb(255, 255, 255)),
-            rounding: CornerRadius::same(12),
+            corner_radius: CornerRadius::same(12),
             expansion: 2.0,
         },
-        open: egui::WidgetVisuals {
+        open: egui::style::WidgetVisuals {
             bg_fill: Color32::from_rgb(39, 39, 42),
             weak_bg_fill: Color32::from_rgb(28, 28, 30),
             bg_stroke: Stroke::new(1.0, Color32::from_rgb(100, 180, 255)),
             fg_stroke: Stroke::new(1.0, Color32::from_rgb(212, 212, 216)),
-            rounding: CornerRadius::same(8),
+            corner_radius: CornerRadius::same(8),
             expansion: 0.0,
         },
     };

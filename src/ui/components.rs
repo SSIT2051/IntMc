@@ -1,4 +1,4 @@
-use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, Response, Sense, Layout, TextStyle, CornerRadius, epaint::StrokeKind};
+use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, Response, Sense, Layout, CornerRadius, epaint::StrokeKind};
 use crate::ui::theme::{PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING, ServerStatus};
 
 pub fn render_empty_state(ui: &mut Ui, icon: &str, title: &str, subtitle: &str, action_text: Option<&str>, on_action: Option<impl FnOnce()>) {
@@ -151,7 +151,7 @@ pub fn status_chip(ui: &mut Ui, text: &str, status: ServerStatus) -> Response {
     };
     let btn = egui::Button::new(RichText::new(text).color(color).size(11.0).strong())
         .fill(bg)
-        .rounding(CornerRadius::same(6))
+        .corner_radius(CornerRadius::same(6))
         .min_size(Vec2::new(0.0, 24.0));
     ui.add(btn)
 }
@@ -220,7 +220,7 @@ pub fn format_badge(ui: &mut Ui, format: &crate::storage::PluginFormat) {
         crate::storage::PluginFormat::Jar => (Color32::from_rgb(180, 200, 100), "JAR"),
     };
     
-    let (rect, response) = ui.allocate_exact_size(Vec2::new(44.0, 20.0), Sense::hover());
+    let (rect, _response) = ui.allocate_exact_size(Vec2::new(44.0, 20.0), Sense::hover());
     ui.painter().rect_filled(rect, 4.0, color.linear_multiply(0.15));
     ui.painter().rect_stroke(rect, 4.0, Stroke::new(1.0, color), StrokeKind::Middle);
     ui.painter().text(rect.center(), Align2::CENTER_CENTER, 

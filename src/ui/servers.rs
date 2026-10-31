@@ -1,7 +1,7 @@
 use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, epaint::StrokeKind};
 use crate::storage::ServerMetadata;
 use crate::app::AppMessage;
-use super::{card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, status_chip, ServerStatus, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR};
+use super::{card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, status_chip, ServerStatus, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT};
 
 pub fn render_servers_tab(ui: &mut Ui, servers: &[ServerMetadata], messages: &mut Vec<AppMessage>) {
     // Header with create button
@@ -56,7 +56,7 @@ pub fn render_server_card(ui: &mut Ui, server: &ServerMetadata, messages: &mut V
                 _ => Color32::from_rgb(150, 150, 150),
             };
             
-            let rect = ui.allocate_exact_size(Vec2::splat(56.0), Sense::hover());
+            let (rect, _response) = ui.allocate_exact_size(Vec2::splat(56.0), Sense::hover());
             let center = rect.center();
             ui.painter().circle_filled(center, 28.0, backend_color.linear_multiply(0.15));
             ui.painter().circle_stroke(center, 28.0, Stroke::new(2.0, backend_color));

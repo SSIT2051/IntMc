@@ -1,9 +1,9 @@
-use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextEdit, ComboBox, epaint::StrokeKind};
-use crate::storage::{PluginInfo, PluginFormat};
+use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextEdit, ComboBox};
+use crate::storage::{PluginFormat};
 use crate::plugins::PluginEntry;
 use crate::app::AppMessage;
 use crate::ui::MarketplaceState;
-use super::{card_frame, elevated_card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, icon_button, chip, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING, render_empty_state, render_loading_state, render_error_state};
+use super::{card_frame, primary_button, outlined_button, chip, PRIMARY, ON_SURFACE, ON_SURFACE_VARIANT, render_empty_state, render_loading_state, render_error_state};
 
 pub fn render_marketplace_tab(ui: &mut Ui, marketplace: &mut MarketplaceState, messages: &mut Vec<AppMessage>) {
     ui.horizontal(|ui| {
@@ -18,7 +18,7 @@ pub fn render_marketplace_tab(ui: &mut Ui, marketplace: &mut MarketplaceState, m
         
         ui.add_space(8.0);
         
-        let mut selected_format = marketplace.selected_format;
+        let mut selected_format = marketplace.selected_format.clone();
         ComboBox::from_label("")
             .selected_text(match selected_format {
                 None => "All Formats",
@@ -37,7 +37,8 @@ pub fn render_marketplace_tab(ui: &mut Ui, marketplace: &mut MarketplaceState, m
     ScrollArea::horizontal().show(ui, |ui| {
         ui.horizontal(|ui| {
             let categories = ["All", "Essentials", "World", "Economy", "Chat", "Admin", "Fun", "Security"];
-            for (i, cat) in categories.iter().enumerate() {
+            for (i, _cat) in categories.iter().enumerate() {
+                let cat = categories[i];
                 let selected = marketplace.selected_category.as_ref() == Some(&cat.to_string());
                 if chip(ui, cat, selected, PRIMARY).clicked() {
                     marketplace.selected_category = Some(cat.to_string());
