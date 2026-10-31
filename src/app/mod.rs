@@ -10,16 +10,14 @@ use crate::storage::{Storage, ServerMetadata};
 use crate::ui::{IntmcUI, ServerDetailTab, ServerDetailState};
 use crate::playit::PlayitManager;
 use crate::lan::LanDiscovery;
-use crate::server::{ServerConfig, ServerBackendType, get_backend, ServerProcess, ServerBackend};
+use crate::server::{ServerConfig, ServerBackendType, get_backend, ServerProcess};
 use crate::plugins::PluginMarketplace;
 use log::{info, warn};
 use eframe::egui::{Context, Ui, FontDefinitions, FontFamily, FontData, Vec2, Align2, Color32, CornerRadius, Stroke, RichText, FontId, ScrollArea, Layout, Sense, TextStyle, DragValue, TextEdit};
 use eframe::Frame;
-use crate::ui::theme::{setup_material3_theme, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING, ServerStatus};
-use crate::ui::components::{card_frame, elevated_card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, icon_button, chip, format_badge, version_badge, render_empty_state, render_loading_state, render_error_state, render_section_header, render_section_header_simple};
+use crate::ui::theme::setup_material3_theme;
 use crate::ui::logs::{LogViewer, render_log_viewer};
-use crate::ui::resources::{ResourceMonitor, render_resources_tab, collect_system_metrics};
-use crate::ui::file_browser::{render_file_browser, render_file_viewer, FileEntry};
+use crate::ui::resources::ResourceMonitor;
 use crate::ui::create_server::{render_create_server_dialog, CreateServerData};
 
 #[derive(Debug, Clone)]
@@ -555,7 +553,7 @@ impl IntmcApp {
             }
         }
         
-        let storage = self.storage.lock();
+        let storage = self.storage.lock().await;
         storage.delete_server(server_id)
             .map_err(|e| format!("Failed to delete server: {}", e))?;
         
@@ -570,7 +568,7 @@ impl IntmcApp {
     }
 
     pub async fn refresh_servers(&mut self) -> Vec<ServerMetadata> {
-        let storage = self.storage.lock();
+        let storage = self.storage.lock().await;
         storage.get_all_servers().unwrap_or_default()
     }
 
@@ -591,7 +589,7 @@ impl IntmcApp {
 
     // New async methods for additional functionality
     pub async fn install_plugin(&self, server_id: &str, plugin_name: &str, plugin_url: &str) -> Result<(), String> {
-        let storage = self.storage.lock();
+        let storage = self.storage.lock().await;
         let servers = storage.get_all_servers()
             .map_err(|e| format!("Failed to get servers: {}", e))?;
         
@@ -648,7 +646,7 @@ impl IntmcApp {
     }
 
     pub async fn uninstall_plugin(&self, server_id: &str, plugin_name: &str) -> Result<(), String> {
-        let storage = self.storage.lock();
+        let storage = self.storage.lock().await;
         // Note: We'd need a delete_plugin method in storage
         // For now, just remove the file
         let servers = storage.get_all_servers()
@@ -669,7 +667,7 @@ impl IntmcApp {
     }
 
     pub async fn toggle_plugin(&self, server_id: &str, plugin_name: &str) -> Result<(), String> {
-        let storage = self.storage.lock();
+        let storage = self.storage.lock().await;
         let plugins = storage.get_plugins(server_id)
             .map_err(|e| format!("Failed to get plugins: {}", e))?;
         
@@ -687,7 +685,7 @@ impl IntmcApp {
         match self.playit.create_tunnel(server_id, port).await {
             Ok(tunnel) => {
                 // Update server with tunnel info
-                let storage = self.storage.lock();
+                let storage = self.storage.lock().await;
                 storage.update_server_ip(server_id, &tunnel.public_url)
                     .map_err(|e| format!("Failed to update server IP: {}", e))?;
                 Ok(())
@@ -798,8 +796,8 @@ impl IntmcApp {
             last_started: None,
             is_running: false,
         };
-        
-        let storage = self.storage.lock();
+
+        let storage = self.storage.lock().await;
         storage.insert_server(&metadata)
             .map_err(|e| format!("Failed to update server: {}", e))?;
         
@@ -807,7 +805,7 @@ impl IntmcApp {
     }
 
 pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
-        let storage = self.storage.lock();
+        let storage = self.storage.lock().await;
         let servers = storage.get_all_servers()
             .map_err(|e| format!("Failed to get servers: {}", e))?;
         
@@ -876,7 +874,7 @@ pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
     }
 
     pub async fn restore_server(&self, server_id: &str, backup_path: &PathBuf) -> Result<(), String> {
-        let storage = self.storage.lock();
+        let storage = self.storage.lock().await;
         let servers = storage.get_all_servers()
             .map_err(|e| format!("Failed to get servers: {}", e))?;
         
@@ -1157,7 +1155,12 @@ pub async fn backup_server(&self, server_id: &str) -> Result<PathBuf, String> {
         ui.add_space(8.0);
         
         // Load plugins from storage (use lock for sync context)
-        let plugins = self.storage.lock().get_plugins(&server.id).unwrap_or_default();
+        let plugins = {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                self.storage.lock().await.get_plugins(&server.id).unwrap_or_default()
+            })
+        };
         
         if plugins.is_empty() {
             render_empty_state(ui, "📦", "No plugins installed", "Install plugins from the Marketplace tab", Some("Open Marketplace"), Some(|| {

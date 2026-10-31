@@ -89,8 +89,7 @@ pub fn render_lan_tab(ui: &mut Ui, _storage: &std::sync::Arc<tokio::sync::Mutex<
 pub fn render_lan_server_card(ui: &mut Ui, server: &LanServer, messages: &mut Vec<AppMessage>) {
     card_frame().show(ui, |ui| {
         ui.horizontal(|ui| {
-            let rect = ui.allocate_exact_size(Vec2::splat(56.0), Sense::hover());
-            let rect = rect.0;
+            let (rect, _response) = ui.allocate_exact_size(Vec2::splat(56.0), Sense::hover());
             let center = rect.center();
             ui.painter().circle_filled(center, 28.0, PRIMARY.linear_multiply(0.15));
             ui.painter().circle_stroke(center, 28.0, Stroke::new(2.0, PRIMARY));

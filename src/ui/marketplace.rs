@@ -64,7 +64,7 @@ pub fn render_marketplace_tab(ui: &mut Ui, marketplace: &mut MarketplaceState, m
     } else if let Some(err) = &marketplace.error {
         render_error_state(ui, err, Some(|| {}));
     } else if marketplace.filtered_plugins.is_empty() {
-        render_empty_state(ui, "📦", "No plugins found", "Try adjusting your search or filters", None, None);
+        render_empty_state(ui, "📦", "No plugins found", "Try adjusting your search or filters", None, None::<fn()>);
     } else {
         ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
             for plugin in &marketplace.filtered_plugins {
@@ -86,8 +86,7 @@ pub fn render_plugin_card(ui: &mut Ui, plugin: &PluginEntry, server_id: Option<&
                 PluginFormat::Jar => Color32::from_rgb(180, 200, 100),
             };
             
-            let rect = ui.allocate_exact_size(Vec2::splat(56.0), Sense::hover());
-            let rect = rect.0;
+            let (rect, _response) = ui.allocate_exact_size(Vec2::splat(56.0), Sense::hover());
             ui.painter().circle_filled(rect.center(), 28.0, format_color.linear_multiply(0.15));
             ui.painter().circle_stroke(rect.center(), 28.0, Stroke::new(2.0, format_color));
             ui.painter().text(

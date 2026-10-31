@@ -20,17 +20,16 @@ pub use resources::*;
 pub use create_server::*;
 pub use components::*;
 
-use eframe::egui::{Color32, Context, Ui, FontDefinitions, FontFamily, FontData, Vec2, Align2, Id, Stroke, FontId, CornerRadius, Margin};
-use crate::storage::{Storage, ServerMetadata, PluginInfo, PluginFormat};
+use eframe::egui::{Ui, FontId, FontFamily, Vec2, Align2, Id, Stroke, CornerRadius, Margin, Layout, ScrollArea, RichText, TextStyle, TextEdit, DragValue};
+use crate::storage::{Storage, ServerMetadata};
 use crate::app::AppMessage;
 use crate::lan::LanServer;
 use crate::plugins::PluginEntry;
 use crate::playit::PlayitManager;
-use crate::server::{ServerBackendType, get_backend, ServerConfig};
+use crate::server::ServerBackendType;
 use crate::ui::theme::{setup_material3_theme, ERROR_CONTAINER, ERROR, SUCCESS, ON_SURFACE, ON_SURFACE_VARIANT, PRIMARY, PRIMARY_CONTAINER};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::process::Child;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use log::{info, warn, error};
@@ -281,8 +280,8 @@ impl IntmcUI {
                         egui::Frame::default()
                             .fill(ERROR_CONTAINER)
                             .stroke(Stroke::new(1.0, ERROR))
-                            .corner_radius(CornerRadius::same(12.0))
-                            .inner_margin(Margin::symmetric(16.0, 12.0))
+                            .corner_radius(CornerRadius::same(12))
+                            .inner_margin(Margin::symmetric(16, 12))
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
                                     ui.colored_label(ERROR, "⚠");
@@ -305,8 +304,8 @@ impl IntmcUI {
                         egui::Frame::default()
                             .fill(SUCCESS.linear_multiply(0.15))
                             .stroke(Stroke::new(1.0, SUCCESS))
-                            .corner_radius(CornerRadius::same(12.0))
-                            .inner_margin(Margin::symmetric(16.0, 12.0))
+                            .corner_radius(CornerRadius::same(12))
+                            .inner_margin(Margin::symmetric(16, 12))
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
                                     ui.colored_label(SUCCESS, "✓");
@@ -397,7 +396,7 @@ impl IntmcUI {
                 if selected {
                     ui.painter().rect_filled(
                         rect.expand(4.0),
-                        CornerRadius::same(16.0),
+                        CornerRadius::same(16),
                         PRIMARY_CONTAINER,
                     );
                 }

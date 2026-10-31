@@ -1,8 +1,7 @@
-use eframe::egui::{Color32, Ui, Vec2, Align2, CornerRadius, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, TextStyle, TextEdit, epaint::StrokeKind};
+use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, ScrollArea, Layout, Sense, epaint::StrokeKind};
 use crate::storage::ServerMetadata;
 use crate::app::AppMessage;
-use crate::server::ServerBackendType;
-use super::{card_frame, elevated_card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, icon_button, status_chip, ServerStatus, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING};
+use super::{card_frame, primary_button, secondary_button, outlined_button, text_button, danger_button, status_chip, ServerStatus, PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR};
 
 pub fn render_servers_tab(ui: &mut Ui, servers: &[ServerMetadata], messages: &mut Vec<AppMessage>) {
     // Header with create button
@@ -135,10 +134,9 @@ pub fn render_server_card(ui: &mut Ui, server: &ServerMetadata, messages: &mut V
 }
 
 fn version_badge(ui: &mut Ui, version: &str) {
-    let (rect, response) = ui.allocate_exact_size(Vec2::new(60.0, 20.0), Sense::hover());
-    let rect = rect.0;
+    let (rect, _response) = ui.allocate_exact_size(Vec2::new(60.0, 20.0), Sense::hover());
     ui.painter().rect_filled(rect, 4.0, PRIMARY_CONTAINER);
-    ui.painter().rect_stroke(rect, 4.0, Stroke::new(1.0, PRIMARY), StrokeKind::Solid);
+    ui.painter().rect_stroke(rect, 4.0, Stroke::new(1.0, PRIMARY), StrokeKind::Middle);
     ui.painter().text(rect.center(), Align2::CENTER_CENTER, 
         version.to_string(), FontId::default(), PRIMARY);
 }

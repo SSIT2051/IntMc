@@ -16,8 +16,8 @@ pub fn render_file_browser(
     ui: &mut Ui,
     current_path: &mut PathBuf,
     selected_file: &mut Option<PathBuf>,
-    on_view: impl FnMut(&PathBuf),
-    on_navigate: impl FnMut(&PathBuf),
+    mut on_view: impl FnMut(&PathBuf),
+    mut on_navigate: impl FnMut(&PathBuf),
 ) {
     card_frame().show(ui, |ui| {
         // Path bar

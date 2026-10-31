@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::process::Child;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use thiserror::Error;
@@ -90,7 +89,6 @@ pub fn get_backend(backend: &ServerBackendType) -> Box<dyn ServerBackend + Send 
 pub mod pumpkin {
     use super::*;
     use tokio::process::Command;
-    use tokio::io::{AsyncBufReadExt, BufReader};
 
     pub struct PumpkinBackend;
 
@@ -121,13 +119,16 @@ pub mod pumpkin {
         }
         fn stop(&self, process: &ServerProcess) -> Result<(), ServerError> {
             let mut child = process.blocking_lock();
-            child.kill().await.map_err(|e| ServerError::StopFailed(e.to_string()))
+            let rt = tokio::runtime::Runtime::new().map_err(|e| ServerError::StopFailed(e.to_string()))?;
+            rt.block_on(async {
+                child.kill().await
+            }).map_err(|e| ServerError::StopFailed(e.to_string()))
         }
         fn is_running(&self, process: &ServerProcess) -> bool {
             let mut child = process.blocking_lock();
             child.try_wait().map(|opt| opt.is_none()).unwrap_or(false)
         }
-        fn get_logs(&self, process: &ServerProcess) -> Vec<String> {
+        fn get_logs(&self, _process: &ServerProcess) -> Vec<String> {
             // Note: For real-time logs, we'd need a separate log reader task
             // This is a placeholder - actual implementation would stream logs
             vec![]
@@ -166,15 +167,18 @@ pub mod steel {
             let child = cmd.spawn().map_err(|e| ServerError::StartFailed(e.to_string()))?;
             Ok(Arc::new(Mutex::new(child)))
         }
-        fn stop(&self, process: &ServerProcess) -> Result<(), ServerError> {
+fn stop(&self, process: &ServerProcess) -> Result<(), ServerError> {
             let mut child = process.blocking_lock();
-            child.kill().map_err(|e| ServerError::StopFailed(e.to_string()))
+            let rt = tokio::runtime::Runtime::new().map_err(|e| ServerError::StopFailed(e.to_string()))?;
+            rt.block_on(async {
+                child.kill().await
+            }).map_err(|e| ServerError::StopFailed(e.to_string()))
         }
         fn is_running(&self, process: &ServerProcess) -> bool {
             let mut child = process.blocking_lock();
             child.try_wait().map(|opt| opt.is_none()).unwrap_or(false)
         }
-        fn get_logs(&self, process: &ServerProcess) -> Vec<String> {
+        fn get_logs(&self, _process: &ServerProcess) -> Vec<String> {
             vec![]
         }
     }
@@ -212,13 +216,16 @@ pub mod rosewater {
         }
         fn stop(&self, process: &ServerProcess) -> Result<(), ServerError> {
             let mut child = process.blocking_lock();
-            child.kill().await.map_err(|e| ServerError::StopFailed(e.to_string()))
+            let rt = tokio::runtime::Runtime::new().map_err(|e| ServerError::StopFailed(e.to_string()))?;
+            rt.block_on(async {
+                child.kill().await
+            }).map_err(|e| ServerError::StopFailed(e.to_string()))
         }
         fn is_running(&self, process: &ServerProcess) -> bool {
             let mut child = process.blocking_lock();
             child.try_wait().map(|opt| opt.is_none()).unwrap_or(false)
         }
-        fn get_logs(&self, process: &ServerProcess) -> Vec<String> {
+        fn get_logs(&self, _process: &ServerProcess) -> Vec<String> {
             vec![]
         }
     }
@@ -256,13 +263,16 @@ pub mod glowstone {
         }
         fn stop(&self, process: &ServerProcess) -> Result<(), ServerError> {
             let mut child = process.blocking_lock();
-            child.kill().await.map_err(|e| ServerError::StopFailed(e.to_string()))
+            let rt = tokio::runtime::Runtime::new().map_err(|e| ServerError::StopFailed(e.to_string()))?;
+            rt.block_on(async {
+                child.kill().await
+            }).map_err(|e| ServerError::StopFailed(e.to_string()))
         }
         fn is_running(&self, process: &ServerProcess) -> bool {
             let mut child = process.blocking_lock();
             child.try_wait().map(|opt| opt.is_none()).unwrap_or(false)
         }
-        fn get_logs(&self, process: &ServerProcess) -> Vec<String> {
+        fn get_logs(&self, _process: &ServerProcess) -> Vec<String> {
             vec![]
         }
     }

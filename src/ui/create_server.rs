@@ -32,7 +32,7 @@ pub fn render_create_server_dialog(ctx: &egui::Context, data: &mut CreateServerD
         .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
         .show(ctx, |ui| {
             ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                render_section_header(ui, "🎮", Some("New Server"), None);
+                render_section_header(ui, "🎮", Some("New Server"), None::<(&str, fn())>);
 
                 card_frame().show(ui, |ui| {
                     ui.horizontal(|ui| {

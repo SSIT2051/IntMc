@@ -1,4 +1,4 @@
-use eframe::egui::{Color32, Style, Visuals, FontDefinitions, FontFamily, FontData, FontId, TextStyle, CornerRadius, Stroke, Widgets, Margin};
+use eframe::egui::{Color32, Style, Visuals, FontDefinitions, FontFamily, FontData, FontId, TextStyle, CornerRadius, Stroke, Widgets};
 
 pub fn setup_material3_theme(ctx: &egui::Context) {
     let font_bytes = include_bytes!("../../assets/DejaVuSans.ttf");
@@ -13,90 +13,89 @@ pub fn setup_material3_theme(ctx: &egui::Context) {
 
     let mut style = Style::default();
     
-    style.visuals = Visuals {
-        dark_mode: true,
-        override_text_color: Some(Color32::from_rgb(232, 232, 232)),
-        window_fill: Color32::from_rgb(24, 24, 27),
-        panel_fill: Color32::from_rgb(24, 24, 27),
-        faint_bg_color: Color32::from_rgb(39, 39, 42),
-        extreme_bg_color: Color32::from_rgb(18, 18, 20),
-        code_bg_color: Color32::from_rgb(28, 28, 30),
-        warn_fg_color: Color32::from_rgb(255, 180, 0),
-        error_fg_color: Color32::from_rgb(255, 80, 80),
-        hyperlink_color: Color32::from_rgb(100, 180, 255),
-        selection: egui::epaint::Selection {
-            bg_fill: Color32::from_rgba_premultiplied(100, 180, 255, 80),
-            stroke: Stroke::new(1.0, Color32::from_rgb(100, 180, 255)),
-        },
-        widgets: Widgets {
-            noninteractive: egui::WidgetVisuals {
-                bg_fill: Color32::from_rgb(39, 39, 42),
-                weak_bg_fill: Color32::from_rgb(28, 28, 30),
-                bg_stroke: Stroke::new(1.0, Color32::from_rgb(63, 63, 70)),
-                fg_stroke: Stroke::new(1.0, Color32::from_rgb(212, 212, 216)),
-                rounding: CornerRadius::same(8.0),
-                expansion: 0.0,
-            },
-            inactive: egui::WidgetVisuals {
-                bg_fill: Color32::from_rgb(39, 39, 42),
-                weak_bg_fill: Color32::from_rgb(28, 28, 30),
-                bg_stroke: Stroke::new(1.0, Color32::from_rgb(63, 63, 70)),
-                fg_stroke: Stroke::new(1.0, Color32::from_rgb(212, 212, 216)),
-                rounding: CornerRadius::same(12.0),
-                expansion: 0.0,
-            },
-            hovered: egui::WidgetVisuals {
-                bg_fill: Color32::from_rgb(51, 51, 55),
-                weak_bg_fill: Color32::from_rgb(39, 39, 42),
-                bg_stroke: Stroke::new(1.0, Color32::from_rgb(100, 180, 255)),
-                fg_stroke: Stroke::new(1.0, Color32::from_rgb(255, 255, 255)),
-                rounding: CornerRadius::same(12.0),
-                expansion: 1.0,
-            },
-            active: egui::WidgetVisuals {
-                bg_fill: Color32::from_rgb(100, 180, 255),
-                weak_bg_fill: Color32::from_rgb(80, 160, 240),
-                bg_stroke: Stroke::new(1.0, Color32::from_rgb(100, 180, 255)),
-                fg_stroke: Stroke::new(1.0, Color32::from_rgb(255, 255, 255)),
-                rounding: CornerRadius::same(12.0),
-                expansion: 2.0,
-            },
-            open: egui::WidgetVisuals {
-                bg_fill: Color32::from_rgb(39, 39, 42),
-                weak_bg_fill: Color32::from_rgb(28, 28, 30),
-                bg_stroke: Stroke::new(1.0, Color32::from_rgb(100, 180, 255)),
-                fg_stroke: Stroke::new(1.0, Color32::from_rgb(212, 212, 216)),
-                rounding: CornerRadius::same(8.0),
-                expansion: 0.0,
-            },
-        },
-        window_corner_radius: CornerRadius::same(16.0),
-        window_shadow: egui::epaint::Shadow {
-            offset: [0.0, 8.0],
-            blur: 16.0,
-            spread: 0.0,
-            color: Color32::from_rgba_premultiplied(0, 0, 0, 120),
-        },
-        popup_shadow: egui::epaint::Shadow {
-            offset: [0.0, 4.0],
-            blur: 8.0,
-            spread: 0.0,
-            color: Color32::from_rgba_premultiplied(0, 0, 0, 100),
-        },
-        resize_corner_size: 16.0,
-        text_cursor: Stroke::new(2.0, Color32::from_rgb(100, 180, 255)),
-        clip_rect_margin: 4.0,
-        button_frame: true,
-        collapsing_header_frame: true,
-        indent_has_left_vline: false,
-        striped: true,
-        slider_trailing_fill: true,
+    let mut visuals = Visuals::default();
+    visuals.dark_mode = true;
+    visuals.override_text_color = Some(Color32::from_rgb(232, 232, 232));
+    visuals.window_fill = Color32::from_rgb(24, 24, 27);
+    visuals.panel_fill = Color32::from_rgb(24, 24, 27);
+    visuals.faint_bg_color = Color32::from_rgb(39, 39, 42);
+    visuals.extreme_bg_color = Color32::from_rgb(18, 18, 20);
+    visuals.code_bg_color = Color32::from_rgb(28, 28, 30);
+    visuals.warn_fg_color = Color32::from_rgb(255, 180, 0);
+    visuals.error_fg_color = Color32::from_rgb(255, 80, 80);
+    visuals.hyperlink_color = Color32::from_rgb(100, 180, 255);
+    visuals.selection = egui::epaint::Selection {
+        bg_fill: Color32::from_rgba_premultiplied(100, 180, 255, 80),
+        stroke: Stroke::new(1.0, Color32::from_rgb(100, 180, 255)),
     };
+    visuals.widgets = Widgets {
+        noninteractive: egui::WidgetVisuals {
+            bg_fill: Color32::from_rgb(39, 39, 42),
+            weak_bg_fill: Color32::from_rgb(28, 28, 30),
+            bg_stroke: Stroke::new(1.0, Color32::from_rgb(63, 63, 70)),
+            fg_stroke: Stroke::new(1.0, Color32::from_rgb(212, 212, 216)),
+            rounding: CornerRadius::same(8),
+            expansion: 0.0,
+        },
+        inactive: egui::WidgetVisuals {
+            bg_fill: Color32::from_rgb(39, 39, 42),
+            weak_bg_fill: Color32::from_rgb(28, 28, 30),
+            bg_stroke: Stroke::new(1.0, Color32::from_rgb(63, 63, 70)),
+            fg_stroke: Stroke::new(1.0, Color32::from_rgb(212, 212, 216)),
+            rounding: CornerRadius::same(12),
+            expansion: 0.0,
+        },
+        hovered: egui::WidgetVisuals {
+            bg_fill: Color32::from_rgb(51, 51, 55),
+            weak_bg_fill: Color32::from_rgb(39, 39, 42),
+            bg_stroke: Stroke::new(1.0, Color32::from_rgb(100, 180, 255)),
+            fg_stroke: Stroke::new(1.0, Color32::from_rgb(255, 255, 255)),
+            rounding: CornerRadius::same(12),
+            expansion: 1.0,
+        },
+        active: egui::WidgetVisuals {
+            bg_fill: Color32::from_rgb(100, 180, 255),
+            weak_bg_fill: Color32::from_rgb(80, 160, 240),
+            bg_stroke: Stroke::new(1.0, Color32::from_rgb(100, 180, 255)),
+            fg_stroke: Stroke::new(1.0, Color32::from_rgb(255, 255, 255)),
+            rounding: CornerRadius::same(12),
+            expansion: 2.0,
+        },
+        open: egui::WidgetVisuals {
+            bg_fill: Color32::from_rgb(39, 39, 42),
+            weak_bg_fill: Color32::from_rgb(28, 28, 30),
+            bg_stroke: Stroke::new(1.0, Color32::from_rgb(100, 180, 255)),
+            fg_stroke: Stroke::new(1.0, Color32::from_rgb(212, 212, 216)),
+            rounding: CornerRadius::same(8),
+            expansion: 0.0,
+        },
+    };
+    visuals.window_corner_radius = CornerRadius::same(16);
+    visuals.window_shadow = egui::epaint::Shadow {
+        offset: [0, 8],
+        blur: 16,
+        spread: 0,
+        color: Color32::from_rgba_premultiplied(0, 0, 0, 120),
+    };
+    visuals.popup_shadow = egui::epaint::Shadow {
+        offset: [0, 4],
+        blur: 8,
+        spread: 0,
+        color: Color32::from_rgba_premultiplied(0, 0, 0, 100),
+    };
+    visuals.resize_corner_size = 16.0;
+    visuals.button_frame = true;
+    visuals.collapsing_header_frame = true;
+    visuals.indent_has_left_vline = false;
+    visuals.striped = true;
+    visuals.slider_trailing_fill = true;
+
+    style.visuals = visuals;
 
     style.spacing.item_spacing = egui::Vec2::new(12.0, 10.0);
-    style.spacing.window_margin = egui::Margin::same(16.0);
+    style.spacing.window_margin = egui::Margin::same(16);
     style.spacing.button_padding = egui::Vec2::new(16.0, 10.0);
-    style.spacing.menu_margin = egui::Margin::same(8.0);
+    style.spacing.menu_margin = egui::Margin::same(8);
     style.spacing.slider_width = 200.0;
     style.spacing.text_edit_width = 280.0;
     style.spacing.combo_width = 200.0;
@@ -112,7 +111,7 @@ pub fn setup_material3_theme(ctx: &egui::Context) {
     style.text_styles.insert(TextStyle::Button, FontId::new(14.0, FontFamily::Proportional));
     style.text_styles.insert(TextStyle::Small, FontId::new(12.0, FontFamily::Proportional));
 
-    ctx.set_style(style);
+    ctx.set_style_of(egui::Theme::Dark, style);
 }
 
 pub const PRIMARY: Color32 = Color32::from_rgb(100, 180, 255);

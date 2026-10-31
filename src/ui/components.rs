@@ -1,5 +1,5 @@
 use eframe::egui::{Color32, Ui, Vec2, Align2, Stroke, RichText, FontId, FontFamily, Response, Sense, Layout, TextStyle, CornerRadius, epaint::StrokeKind};
-use crate::ui::theme::{PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING};
+use crate::ui::theme::{PRIMARY, PRIMARY_CONTAINER, ON_SURFACE, ON_SURFACE_VARIANT, SURFACE_VARIANT, OUTLINE, SUCCESS, ERROR, WARNING, ServerStatus};
 
 pub fn render_empty_state(ui: &mut Ui, icon: &str, title: &str, subtitle: &str, action_text: Option<&str>, on_action: Option<impl FnOnce()>) {
     ui.vertical_centered(|ui| {
@@ -140,16 +140,32 @@ pub fn chip(ui: &mut Ui, text: &str, selected: bool, color: Color32) -> Response
     ui.add(btn)
 }
 
+pub fn status_chip(ui: &mut Ui, text: &str, status: ServerStatus) -> Response {
+    let (color, bg) = match status {
+        ServerStatus::Running => (SUCCESS, Color32::from_rgba_premultiplied(80, 220, 120, 40)),
+        ServerStatus::Stopped => (ERROR, Color32::from_rgba_premultiplied(255, 80, 80, 40)),
+        ServerStatus::Starting => (WARNING, Color32::from_rgba_premultiplied(255, 200, 50, 40)),
+        ServerStatus::Stopping => (WARNING, Color32::from_rgba_premultiplied(255, 200, 50, 40)),
+        ServerStatus::Error => (ERROR, Color32::from_rgba_premultiplied(255, 80, 80, 40)),
+        ServerStatus::Unknown => (ON_SURFACE_VARIANT, Color32::from_rgba_premultiplied(150, 150, 150, 40)),
+    };
+    let btn = egui::Button::new(RichText::new(text).color(color).size(11.0).strong())
+        .fill(bg)
+        .rounding(CornerRadius::same(6))
+        .min_size(Vec2::new(0.0, 24.0));
+    ui.add(btn)
+}
+
 pub fn card_frame() -> egui::Frame {
     egui::Frame::default()
         .fill(Color32::from_rgb(32, 32, 35))
         .stroke(Stroke::new(1.0, OUTLINE))
-        .corner_radius(CornerRadius::same(16.0))
-        .inner_margin(egui::Margin::symmetric(16.0, 14.0))
+        .corner_radius(CornerRadius::same(16))
+        .inner_margin(egui::Margin::symmetric(16, 14))
         .shadow(egui::epaint::Shadow {
-            offset: [0.0, 2.0],
-            blur: 4.0,
-            spread: 0.0,
+            offset: [0, 2],
+            blur: 4,
+            spread: 0,
             color: Color32::from_rgba_premultiplied(0, 0, 0, 80),
         })
 }
@@ -158,12 +174,12 @@ pub fn elevated_card_frame() -> egui::Frame {
     egui::Frame::default()
         .fill(Color32::from_rgb(28, 28, 30))
         .stroke(Stroke::new(1.0, OUTLINE))
-        .corner_radius(CornerRadius::same(16.0))
-        .inner_margin(egui::Margin::symmetric(16.0, 14.0))
+        .corner_radius(CornerRadius::same(16))
+        .inner_margin(egui::Margin::symmetric(16, 14))
         .shadow(egui::epaint::Shadow {
-            offset: [0.0, 4.0],
-            blur: 8.0,
-            spread: 0.0,
+            offset: [0, 4],
+            blur: 8,
+            spread: 0,
             color: Color32::from_rgba_premultiplied(0, 0, 0, 100),
         })
 }
@@ -176,7 +192,7 @@ pub fn status_indicator(ui: &mut Ui, running: bool) -> Response {
     };
     
     let (rect, response) = ui.allocate_exact_size(Vec2::splat(8.0), Sense::hover());
-    ui.painter().circle_filled(rect.0.center(), 4.0, color);
+    ui.painter().circle_filled(rect.center(), 4.0, color);
     ui.add_space(6.0);
     ui.label(RichText::new(text).size(12.0).color(color).strong());
     response
@@ -205,18 +221,16 @@ pub fn format_badge(ui: &mut Ui, format: &crate::storage::PluginFormat) {
     };
     
     let (rect, response) = ui.allocate_exact_size(Vec2::new(44.0, 20.0), Sense::hover());
-    let rect = rect.0;
     ui.painter().rect_filled(rect, 4.0, color.linear_multiply(0.15));
-    ui.painter().rect_stroke(rect, 4.0, Stroke::new(1.0, color), StrokeKind::Solid);
+    ui.painter().rect_stroke(rect, 4.0, Stroke::new(1.0, color), StrokeKind::Middle);
     ui.painter().text(rect.center(), Align2::CENTER_CENTER, 
         text.to_string(), FontId::new(9.0, FontFamily::Proportional), color);
 }
 
 pub fn version_badge(ui: &mut Ui, version: &str) {
     let (rect, response) = ui.allocate_exact_size(Vec2::new(60.0, 20.0), Sense::hover());
-    let rect = rect.0;
     ui.painter().rect_filled(rect, 4.0, PRIMARY_CONTAINER);
-    ui.painter().rect_stroke(rect, 4.0, Stroke::new(1.0, PRIMARY), StrokeKind::Solid);
+    ui.painter().rect_stroke(rect, 4.0, Stroke::new(1.0, PRIMARY), StrokeKind::Middle);
     ui.painter().text(rect.center(), Align2::CENTER_CENTER,
         version.to_string(), FontId::default(), PRIMARY);
 }
